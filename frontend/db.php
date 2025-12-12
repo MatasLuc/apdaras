@@ -3,8 +3,56 @@
 
 declare(strict_types=1);
 
+function load_env_from_file(): void
+{
+    static $loaded = false;
+
+    if ($loaded) {
+        return;
+    }
+
+    $paths = [
+        __DIR__ . '/../.env',
+        __DIR__ . '/../backend/.env',
+    ];
+
+    foreach ($paths as $path) {
+        if (!is_readable($path)) {
+            continue;
+        }
+
+        $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        if ($lines === false) {
+            continue;
+        }
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '' || str_starts_with($line, '#')) {
+                continue;
+            }
+
+            [$key, $value] = array_pad(explode('=', $line, 2), 2, '');
+            $key = trim($key);
+            $value = trim($value);
+
+            if ($key === '' || getenv($key) !== false) {
+                continue;
+            }
+
+            putenv("{$key}={$value}");
+            $_ENV[$key] = $value;
+        }
+
+        $loaded = true;
+        break;
+    }
+}
+
 function env_value(string $key, string $default): string
 {
+    load_env_from_file();
+
     $value = getenv($key);
     return ($value !== false && $value !== '') ? $value : $default;
 }
@@ -27,7 +75,7 @@ function get_db_connection(): PDO
 
     try {
         $pdo = new PDO(
-            "mysql:host={$host};port={$port};charset=utf8mb4",
+            "mysql:host={$host};port={$port};dbname={$database};charset=utf8mb4",
             $user,
             $password,
             [
@@ -37,13 +85,12 @@ function get_db_connection(): PDO
         );
     } catch (PDOException $e) {
         error_log('MySQL prisijungimo klaida: ' . $e->getMessage());
-        throw new PDOException('Nepavyko prisijungti prie MySQL serverio. Patikrinkite prisijungimo duomenis.', (int) $e->getCode(), $e);
+        throw new PDOException(
+            'Nepavyko prisijungti prie MySQL serverio: ' . $e->getMessage(),
+            (int) $e->getCode(),
+            $e
+        );
     }
-
-    $pdo->exec(
-        "CREATE DATABASE IF NOT EXISTS `{$database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
-    );
-    $pdo->exec("USE `{$database}`");
 
     ensure_users_table($pdo);
 
