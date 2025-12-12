@@ -12,12 +12,14 @@
     <nav class="nav">
       <a href="#pagrindinis">Pagrindinis</a>
       <a href="#parduotuve">Parduotuvė</a>
+      <a href="#prisijungti">Prisijungimas</a>
+      <a href="#registracija">Registracija</a>
       <a href="#privalumai">Kodėl mes?</a>
       <a href="#kontaktai">Kontaktai</a>
     </nav>
     <div class="actions">
-      <a class="nav__link" href="#prisijungti">Prisijungti</a>
-      <a class="btn btn--primary" href="#registracija">Registracija</a>
+      <a class="btn btn--ghost" href="#parduotuve">Krepšelis</a>
+      <a class="btn btn--primary" href="#prisijungti">Paskyra</a>
     </div>
   </header>
 

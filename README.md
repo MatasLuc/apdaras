@@ -4,7 +4,7 @@ Internetinės parduotuvės projektas, skirtas prekiauti marškinėliais, džempe
 
 ## Struktūra
 - `backend/` – Node.js/Express API su MySQL.
-- `frontend/` – pradinis svetainės puslapis (`index.php`) su statiniu dizainu, kurį galima patalpinti serveryje, kad apdaras.lt nerodytų „Forbidden“ klaidos.
+- `frontend/` – pradinis svetainės puslapis (`index.php`) su statiniu, šviesiu dizainu ir viršutiniu meniu (pagrindinis, parduotuvė, prisijungimas, registracija), kurį galima patalpinti serveryje, kad apdaras.lt nerodytų „Forbidden“ klaidos.
 - `docs/` – architektūros ir API planas.
 
 ## Greitas paleidimas

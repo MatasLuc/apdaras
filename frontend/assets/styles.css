@@ -17,9 +17,7 @@ body {
   margin: 0;
   min-height: 100vh;
   font-family: var(--font);
-  background: radial-gradient(circle at 20% 20%, rgba(37, 99, 235, 0.08), transparent 35%),
-              radial-gradient(circle at 80% 0%, rgba(56, 189, 248, 0.12), transparent 30%),
-              var(--bg);
+  background: var(--bg);
   color: var(--text);
   line-height: 1.6;
 }
@@ -35,10 +33,10 @@ a { color: inherit; text-decoration: none; }
   align-items: center;
   gap: 16px;
   padding: 14px clamp(16px, 4vw, 40px);
-  background: rgba(255, 255, 255, 0.86);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
-  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.05);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.04);
 }
 
 .brand {
@@ -49,15 +47,16 @@ a { color: inherit; text-decoration: none; }
 
 .nav {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   justify-content: center;
+  flex-wrap: wrap;
 }
 
 .nav a {
   font-weight: 600;
   color: var(--muted);
-  padding: 8px 12px;
-  border-radius: 999px;
+  padding: 10px 12px;
+  border-radius: 10px;
   transition: color 0.2s ease, background 0.2s ease;
 }
 
@@ -69,8 +68,6 @@ a { color: inherit; text-decoration: none; }
   justify-content: flex-end;
   align-items: center;
 }
-
-.nav__link { font-weight: 700; color: var(--accent); }
 
 .hero {
   display: grid;
