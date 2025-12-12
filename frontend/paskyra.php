@@ -50,6 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['user_name'] = $name;
             $_SESSION['user_email'] = $email;
             $user = find_user_by_id($pdo, (int) $user['id']);
+            $_SESSION['user_role'] = $user['role'] ?? 'customer';
 
             $success = 'Paskyros duomenys atnaujinti.';
         } catch (Throwable $e) {

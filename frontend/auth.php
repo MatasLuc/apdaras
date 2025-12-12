@@ -43,6 +43,11 @@ function require_login(PDO $pdo): array
         exit;
     }
 
+    // Keep session details in sync for shared UI elements.
+    $_SESSION['user_role'] = $user['role'] ?? 'customer';
+    $_SESSION['user_name'] = $user['name'] ?? null;
+    $_SESSION['user_email'] = $user['email'] ?? null;
+
     return $user;
 }
 
