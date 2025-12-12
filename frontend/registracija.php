@@ -70,55 +70,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <?php include __DIR__ . '/partials/nav.php'; ?>
 
   <section class="hero">
-    <div class="hero__content">
-      <p class="badge">Nauji klientai</p>
-      <h1>Sukurkite paskyrą per kelias sekundes</h1>
-      <p class="lead">Registruokitės, kad išsaugotumėte krepšelį, adresus ir gautumėte nuolaidas pirmiesiems užsakymams.</p>
+    <div class="container hero__shell">
+      <div class="hero__grid">
+        <div class="hero__content">
+          <div class="badge">Nauji klientai</div>
+          <h1>Sukurkite paskyrą per kelias sekundes</h1>
+          <p class="lead">Registruokitės, kad išsaugotumėte krepšelį, adresus ir gautumėte nuolaidas pirmiesiems užsakymams.</p>
+          <div class="meta-row">
+            <span>🛒 Išsaugotas krepšelis</span>
+            <span>🎁 Pasiūlymai nariams</span>
+          </div>
+        </div>
+        <div class="hero__visual">
+          <div class="hero__panel">
+            <p class="card__eyebrow">Greita pradžia</p>
+            <p class="muted">Reikės tik vardo, el. pašto ir slaptažodžio. Patvirtinimų laiškų nereikia.</p>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
   <main class="section">
-    <div class="auth">
-      <div>
-        <h2>Registracijos forma</h2>
-        <p class="muted">Užpildykite savo duomenis ir spustelėkite „Registruotis“.</p>
+    <div class="container">
+      <div class="auth-shell">
+        <div class="auth-card">
+          <h2>Registracijos forma</h2>
+          <p class="muted">Užpildykite savo duomenis ir spustelėkite „Registruotis“.</p>
+          <?php if ($errors): ?>
+            <div class="alert alert--error">
+              <strong>Nepavyko užbaigti registracijos:</strong>
+              <ul>
+                <?php foreach ($errors as $error): ?>
+                  <li><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></li>
+                <?php endforeach; ?>
+              </ul>
+            </div>
+          <?php elseif ($success): ?>
+            <div class="alert alert--success">
+              <?php echo htmlspecialchars($success, ENT_QUOTES, 'UTF-8'); ?>
+            </div>
+          <?php endif; ?>
+          <form class="form" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="post" novalidate>
+            <label class="form__field">
+              <span>Vardas</span>
+              <input type="text" name="name" placeholder="Jūsų vardas" value="<?php echo htmlspecialchars($nameValue, ENT_QUOTES, 'UTF-8'); ?>" required />
+            </label>
+            <label class="form__field">
+              <span>El. paštas</span>
+              <input type="email" name="email" placeholder="jusu@pastas.lt" value="<?php echo htmlspecialchars($emailValue, ENT_QUOTES, 'UTF-8'); ?>" required />
+            </label>
+            <label class="form__field">
+              <span>Slaptažodis</span>
+              <input type="password" name="password" placeholder="Sukurkite slaptažodį" required />
+            </label>
+            <label class="form__field">
+              <span>Patvirtinkite slaptažodį</span>
+              <input type="password" name="password_confirm" placeholder="Pakartokite slaptažodį" required />
+            </label>
+            <div class="form__actions">
+              <button class="btn btn--primary" type="submit">Registruotis</button>
+              <a class="btn btn--ghost" href="prisijungimas.php">Jau turite paskyrą?</a>
+            </div>
+          </form>
+        </div>
+        <div class="auth-card">
+          <h3>Jau esate klientas?</h3>
+          <p class="muted">Prisijunkite ir tęskite pirkimą ten, kur sustojote.</p>
+          <a class="btn btn--primary" href="prisijungimas.php">Prisijungti</a>
+        </div>
       </div>
-      <?php if ($errors): ?>
-        <div class="alert alert--error">
-          <strong>Nepavyko užbaigti registracijos:</strong>
-          <ul>
-            <?php foreach ($errors as $error): ?>
-              <li><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></li>
-            <?php endforeach; ?>
-          </ul>
-        </div>
-      <?php elseif ($success): ?>
-        <div class="alert alert--success">
-          <?php echo htmlspecialchars($success, ENT_QUOTES, 'UTF-8'); ?>
-        </div>
-      <?php endif; ?>
-      <form class="form" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="post" novalidate>
-        <label class="form__field">
-          <span>Vardas</span>
-          <input type="text" name="name" placeholder="Jūsų vardas" value="<?php echo htmlspecialchars($nameValue, ENT_QUOTES, 'UTF-8'); ?>" required />
-        </label>
-        <label class="form__field">
-          <span>El. paštas</span>
-          <input type="email" name="email" placeholder="jusu@pastas.lt" value="<?php echo htmlspecialchars($emailValue, ENT_QUOTES, 'UTF-8'); ?>" required />
-        </label>
-        <label class="form__field">
-          <span>Slaptažodis</span>
-          <input type="password" name="password" placeholder="Sukurkite slaptažodį" required />
-        </label>
-        <label class="form__field">
-          <span>Patvirtinkite slaptažodį</span>
-          <input type="password" name="password_confirm" placeholder="Pakartokite slaptažodį" required />
-        </label>
-        <div class="form__actions">
-          <button class="btn btn--primary" type="submit">Registruotis</button>
-          <a class="btn btn--ghost" href="prisijungimas.php">Jau turite paskyrą?</a>
-        </div>
-      </form>
     </div>
   </main>
 

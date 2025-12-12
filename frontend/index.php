@@ -11,83 +11,115 @@
   <?php include __DIR__ . '/partials/nav.php'; ?>
 
   <section id="pagrindinis" class="hero">
-    <div class="hero__content">
-      <p class="badge">Nauja kolekcija</p>
-      <h1>apdaras.lt</h1>
-      <p class="lead">Stilingi marškinėliai, džemperiai ir aksesuarai kasdienai. Užsisakyk internetu ir gauk pristatymą į namus.</p>
-      <div class="cta">
-        <a class="btn btn--primary" href="parduotuve.php">Peržiūrėti prekes</a>
-        <a class="btn btn--ghost" href="#privalumai">Kodėl apdaras.lt?</a>
-      </div>
-    </div>
-    <div class="hero__visual">
-      <div class="card">
-        <p class="card__eyebrow">Top pasirinkimas</p>
-        <p class="card__title">„Urban“ džemperis</p>
-        <p class="card__price">€39.00</p>
+    <div class="container hero__shell">
+      <div class="hero__grid">
+        <div class="hero__content">
+          <div class="badge">Nauja kolekcija 2024</div>
+          <h1>Urban stilius kiekvienai dienai</h1>
+          <p class="lead">apdaras.lt siūlo minimalistinius marškinėlius, patogius džemperius ir modernius aksesuarus. Viskas pritaikyta kasdieniam ritmui – nuo darbų iki savaitgalio kelionių.</p>
+          <div class="meta-row">
+            <span>✔️ Greitas pristatymas LT</span>
+            <span>✔️ Nemokamas grąžinimas 30 d.</span>
+            <span>✔️ Pagalba lietuvių k.</span>
+          </div>
+          <div class="cta">
+            <a class="btn btn--primary" href="parduotuve.php">Peržiūrėti prekes</a>
+            <a class="btn btn--ghost" href="#privalumai">Pažinti prekės ženklą</a>
+          </div>
+        </div>
+        <div class="hero__visual">
+          <div class="hero__panel">
+            <p class="card__eyebrow">Top pasirinkimas</p>
+            <p class="card__title">„Urban“ džemperis</p>
+            <p class="card__price">€39.00</p>
+            <p class="muted">Minkštas kilpinis audinys, trys spalvos.</p>
+          </div>
+          <div class="hero__panel">
+            <p class="card__eyebrow">Krepšelio idėja</p>
+            <p class="muted">3 x marškinėliai, 1 x džemperis, 2 x aksesuarai</p>
+            <p class="card__price">€124.00</p>
+          </div>
+        </div>
       </div>
     </div>
   </section>
 
   <main>
-    <section id="privalumai" class="section section--muted">
-      <div class="section__header">
-        <p class="badge">Vertė</p>
-        <h2>Privalumai, kuriuos gaunate</h2>
-      </div>
-      <div class="grid grid--three">
-        <article class="feature">
-          <h3>Kokybiški audiniai</h3>
-          <p>Naudojame sertifikuotas medžiagas, kad drabužiai būtų patvarūs ir malonūs dėvėti.</p>
-        </article>
-        <article class="feature">
-          <h3>Lietuviškas klientų aptarnavimas</h3>
-          <p>Padedame išsirinkti dydžius, priimame grąžinimus ir greitai atsakome į visus klausimus.</p>
-        </article>
-        <article class="feature">
-          <h3>Greitas pristatymas</h3>
-          <p>Siunčiame per 1–2 darbo dienas visoje Lietuvoje, o virš €70 pristatymas nemokamas.</p>
-        </article>
+    <section id="privalumai" class="section">
+      <div class="container">
+        <div class="section__inner">
+          <div class="section__header">
+            <p class="badge">Vertė</p>
+            <h2>Ką gaunate rinkdamiesi apdaras.lt</h2>
+          </div>
+          <div class="grid grid--three">
+            <article class="tile">
+              <p class="tile__label">01</p>
+              <h3>Kokybiški audiniai</h3>
+              <p class="muted">Naudojame sertifikuotas medžiagas, kad drabužiai būtų patvarūs, kvėpuojantys ir malonūs dėvėti.</p>
+            </article>
+            <article class="tile">
+              <p class="tile__label">02</p>
+              <h3>Greitas aptarnavimas</h3>
+              <p class="muted">Atsakome lietuviškai, padedame su dydžiais ir užtikriname sklandų grąžinimą be papildomų klausimų.</p>
+            </article>
+            <article class="tile">
+              <p class="tile__label">03</p>
+              <h3>Aiški logistika</h3>
+              <p class="muted">Pristatome per 1–2 darbo dienas, o virš €70 užsakymams taikome nemokamą pristatymą.</p>
+            </article>
+          </div>
+        </div>
       </div>
     </section>
 
     <section class="section">
-      <div class="section__header">
-        <p class="badge">Pagrindiniai puslapiai</p>
-        <h2>Kur norite tęsti?</h2>
-      </div>
-      <div class="grid grid--three">
-        <article class="card card--panel">
-          <h3>Parduotuvė</h3>
-          <p>Peržiūrėkite populiariausias kategorijas ir įsidėkite prekes į krepšelį.</p>
-          <a class="text-link" href="parduotuve.php">Eiti į parduotuvę</a>
-        </article>
-        <article class="card card--panel">
-          <h3>Prisijungimas</h3>
-          <p>Valdykite užsakymus ir sekite pristatymą prisijungę prie paskyros.</p>
-          <a class="text-link" href="prisijungimas.php">Prisijungti</a>
-        </article>
-        <article class="card card--panel">
-          <h3>Registracija</h3>
-          <p>Sukurkite paskyrą, išsaugokite adresus ir gaukite nuolaidų kodus.</p>
-          <a class="text-link" href="registracija.php">Registruotis</a>
-        </article>
+      <div class="container">
+        <div class="section__inner">
+          <div class="section__header">
+            <p class="badge">Greitos nuorodos</p>
+            <h2>Pasirinkite, kur tęsti</h2>
+          </div>
+          <div class="grid grid--three">
+            <article class="card card--panel">
+              <h3>Parduotuvė</h3>
+              <p>Pasiruošę apsipirkti? Peržiūrėkite naujausius marškinėlių, džemperių ir aksesuarų leidimus.</p>
+              <a class="text-link" href="parduotuve.php">Eiti į parduotuvę</a>
+            </article>
+            <article class="card card--panel">
+              <h3>Prisijungimas</h3>
+              <p>Valdykite užsakymus, sekite pristatymą ir gaukite personalizuotas rekomendacijas.</p>
+              <a class="text-link" href="prisijungimas.php">Prisijungti</a>
+            </article>
+            <article class="card card--panel">
+              <h3>Registracija</h3>
+              <p>Susikurkite paskyrą, išsaugokite adresus ir gaukite nuolaidų kodus.</p>
+              <a class="text-link" href="registracija.php">Sukurti paskyrą</a>
+            </article>
+          </div>
+        </div>
       </div>
     </section>
 
-    <section class="section section--muted">
-      <div class="section__header">
-        <p class="badge">Vystymas</p>
-        <h2>Kas jau veikia ir kas bus netrukus</h2>
-      </div>
-      <div class="grid grid--two">
-        <div>
-          <h3>Ši pradžios svetainė</h3>
-          <p>Pradinis „index.php“ failas rodomas atidarius apdaras.lt, kad neliktų „Forbidden“ klaidos ir lankytojai matytų veikiančią vitriną.</p>
-        </div>
-        <div>
-          <h3>Ryšys su backend</h3>
-          <p>API jau paruošta MySQL duomenų bazei (katalogas „backend/“). Front-end bus sujungtas su parduotuvės ir vartotojų maršrutais, kai tik bus pridėtas pilnas UI.</p>
+    <section class="section">
+      <div class="container">
+        <div class="section__inner">
+          <div class="section__header">
+            <p class="badge">Vystymas</p>
+            <h2>Kas veikia šiandien ir kas laukia</h2>
+          </div>
+          <div class="grid grid--two align-center">
+            <div class="tile">
+              <p class="tile__label">Pradinis puslapis</p>
+              <h3>Vitri̇na be klaidų</h3>
+              <p class="muted">Index.php rodo veikiančią vitriną, kad lankytojai matytų turinį ir rastų svarbiausias nuorodas be „Forbidden“ klaidų.</p>
+            </div>
+            <div class="tile">
+              <p class="tile__label">Backend ryšys</p>
+              <h3>Paruošta MySQL</h3>
+              <p class="muted">API dalis jau paruošta. Front-end bus prijungtas prie prekių ir vartotojų maršrutų, kai tik bus pridėtas pilnas UI.</p>
+            </div>
+          </div>
         </div>
       </div>
     </section>

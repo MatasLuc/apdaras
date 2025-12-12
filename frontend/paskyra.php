@@ -75,57 +75,81 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <?php include __DIR__ . '/partials/nav.php'; ?>
 
   <section class="hero">
-    <div class="hero__content">
-      <p class="badge">Paskyra</p>
-      <h1>Sveiki, <?php echo htmlspecialchars($user['name'], ENT_QUOTES, 'UTF-8'); ?>!</h1>
-      <p class="lead">Atnaujinkite savo duomenis ir valdykite paskyrą.</p>
+    <div class="container hero__shell">
+      <div class="hero__grid">
+        <div class="hero__content">
+          <div class="badge">Paskyra</div>
+          <h1>Labas, <?php echo htmlspecialchars($user['name'], ENT_QUOTES, 'UTF-8'); ?>!</h1>
+          <p class="lead">Atnaujinkite savo duomenis, pasiekite užsakymų istoriją ir išsaugokite pristatymo adresus.</p>
+        </div>
+        <div class="hero__visual">
+          <div class="hero__panel">
+            <p class="card__eyebrow">El. paštas</p>
+            <p class="muted"><?php echo htmlspecialchars($user['email'], ENT_QUOTES, 'UTF-8'); ?></p>
+          </div>
+          <div class="hero__panel">
+            <p class="card__eyebrow">Rolė</p>
+            <p class="muted"><?php echo htmlspecialchars($user['role'] ?? 'customer', ENT_QUOTES, 'UTF-8'); ?></p>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
   <main class="section">
-    <div class="auth">
-      <div>
-        <h2>Paskyros nustatymai</h2>
-        <p class="muted">Keiskite vardą, el. paštą ar slaptažodį.</p>
+    <div class="container">
+      <div class="auth-shell">
+        <div class="auth-card">
+          <h2>Paskyros nustatymai</h2>
+          <p class="muted">Keiskite vardą, el. paštą ar slaptažodį.</p>
+          <?php if ($errors): ?>
+            <div class="alert alert--error">
+              <strong>Nepavyko atnaujinti:</strong>
+              <ul>
+                <?php foreach ($errors as $error): ?>
+                  <li><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></li>
+                <?php endforeach; ?>
+              </ul>
+            </div>
+          <?php elseif ($success): ?>
+            <div class="alert alert--success">
+              <?php echo htmlspecialchars($success, ENT_QUOTES, 'UTF-8'); ?>
+            </div>
+          <?php endif; ?>
+          <form class="form" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="post" novalidate>
+            <label class="form__field">
+              <span>Vardas</span>
+              <input type="text" name="name" value="<?php echo htmlspecialchars($user['name'], ENT_QUOTES, 'UTF-8'); ?>" required />
+            </label>
+            <label class="form__field">
+              <span>El. paštas</span>
+              <input type="email" name="email" value="<?php echo htmlspecialchars($user['email'], ENT_QUOTES, 'UTF-8'); ?>" required />
+            </label>
+            <div class="form__row">
+              <label class="form__field">
+                <span>Naujas slaptažodis (neprivaloma)</span>
+                <input type="password" name="password" placeholder="********" />
+              </label>
+              <label class="form__field">
+                <span>Pakartokite slaptažodį</span>
+                <input type="password" name="password_confirm" placeholder="********" />
+              </label>
+            </div>
+            <div class="form__actions">
+              <button class="btn btn--primary" type="submit">Išsaugoti</button>
+              <a class="btn btn--ghost" href="logout.php">Atsijungti</a>
+            </div>
+          </form>
+        </div>
+        <div class="auth-card">
+          <h3>Greitos nuorodos</h3>
+          <p class="muted">Peržiūrėkite parduotuvę ar grįžkite į pagrindinį puslapį.</p>
+          <div class="cta">
+            <a class="btn btn--primary" href="parduotuve.php">Eiti į parduotuvę</a>
+            <a class="btn btn--ghost" href="index.php">Grįžti į pradžią</a>
+          </div>
+        </div>
       </div>
-      <?php if ($errors): ?>
-        <div class="alert alert--error">
-          <strong>Nepavyko atnaujinti:</strong>
-          <ul>
-            <?php foreach ($errors as $error): ?>
-              <li><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></li>
-            <?php endforeach; ?>
-          </ul>
-        </div>
-      <?php elseif ($success): ?>
-        <div class="alert alert--success">
-          <?php echo htmlspecialchars($success, ENT_QUOTES, 'UTF-8'); ?>
-        </div>
-      <?php endif; ?>
-      <form class="form" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="post" novalidate>
-        <label class="form__field">
-          <span>Vardas</span>
-          <input type="text" name="name" value="<?php echo htmlspecialchars($user['name'], ENT_QUOTES, 'UTF-8'); ?>" required />
-        </label>
-        <label class="form__field">
-          <span>El. paštas</span>
-          <input type="email" name="email" value="<?php echo htmlspecialchars($user['email'], ENT_QUOTES, 'UTF-8'); ?>" required />
-        </label>
-        <div class="form__row">
-          <label class="form__field">
-            <span>Naujas slaptažodis (neprivaloma)</span>
-            <input type="password" name="password" placeholder="********" />
-          </label>
-          <label class="form__field">
-            <span>Pakartokite slaptažodį</span>
-            <input type="password" name="password_confirm" placeholder="********" />
-          </label>
-        </div>
-        <div class="form__actions">
-          <button class="btn btn--primary" type="submit">Išsaugoti</button>
-          <a class="btn btn--ghost" href="logout.php">Atsijungti</a>
-        </div>
-      </form>
     </div>
   </main>
 

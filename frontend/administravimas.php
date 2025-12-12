@@ -22,17 +22,33 @@ if (($user['role'] ?? 'customer') !== 'admin') {
   <?php include __DIR__ . '/partials/nav.php'; ?>
 
   <section class="hero">
-    <div class="hero__content">
-      <p class="badge">Administravimas</p>
-      <h1>Valdymo skydelis</h1>
-      <p class="lead">Čia galėsite tvarkyti katalogą ir naudotojus. Šiuo metu tai informacinis puslapis.</p>
+    <div class="container hero__shell">
+      <div class="hero__grid">
+        <div class="hero__content">
+          <div class="badge">Administravimas</div>
+          <h1>Valdymo skydelis</h1>
+          <p class="lead">Čia galėsite tvarkyti katalogą ir naudotojus. Šiuo metu tai informacinis puslapis.</p>
+          <div class="meta-row">
+            <span>🛠️ Paruošta plėtrai</span>
+            <span>🔐 Tik administratoriams</span>
+          </div>
+        </div>
+        <div class="hero__visual">
+          <div class="hero__panel">
+            <p class="card__eyebrow">Prisijungęs</p>
+            <p class="muted"><?php echo htmlspecialchars($user['email'], ENT_QUOTES, 'UTF-8'); ?></p>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
   <main class="section">
-    <div class="feature">
-      <h3>Administratoriaus priėjimas patvirtintas</h3>
-      <p class="muted">Galite tęsti kuriant tikrą valdymo UI arba prisijungti prie backend.</p>
+    <div class="container">
+      <div class="section__inner">
+        <h3>Administratoriaus priėjimas patvirtintas</h3>
+        <p class="muted">Galite tęsti kuriant tikrą valdymo UI arba prisijungti prie backend.</p>
+      </div>
     </div>
   </main>
 
