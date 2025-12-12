@@ -23,25 +23,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $errors[] = 'Slaptažodis yra privalomas.';
   }
 
-  if (!$errors) {
-    try {
-      $db = get_db_connection();
-      $user = find_user_by_email($db, $email);
+    if (!$errors) {
+      try {
+        $db = get_db_connection();
+        $user = find_user_by_email($db, $email);
 
-      if (!$user || !password_verify($password, $user['password_hash'])) {
-        $errors[] = 'Neteisingi prisijungimo duomenys.';
-      } else {
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['user_name'] = $user['name'];
-        $_SESSION['user_email'] = $user['email'];
-        $success = 'Prisijungimas sėkmingas. Malonu matyti sugrįžus!';
+        if (!$user || !password_verify($password, $user['password_hash'])) {
+          $errors[] = 'Neteisingi prisijungimo duomenys.';
+        } else {
+          $_SESSION['user_id'] = $user['id'];
+          $_SESSION['user_name'] = $user['name'];
+          $_SESSION['user_email'] = $user['email'];
+          $success = 'Prisijungimas sėkmingas. Malonu matyti sugrįžus!';
+        }
+      } catch (PDOException $e) {
+        error_log('Prisijungimo klaida: ' . $e->getMessage());
+        $errors[] = $e->getMessage();
       }
-    } catch (PDOException $e) {
-      $errors[] = 'Nepavyko patikrinti prisijungimo. Bandykite dar kartą.';
     }
   }
-}
-?>
+  ?>
 <!DOCTYPE html>
 <html lang="lt">
 <head>

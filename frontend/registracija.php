@@ -49,7 +49,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $emailValue = $email;
       }
     } catch (PDOException $e) {
-      $errors[] = 'Nepavyko užbaigti registracijos. Bandykite dar kartą.';
+      error_log('Registracijos klaida: ' . $e->getMessage());
+      $errors[] = $e->getMessage();
     }
   }
 }

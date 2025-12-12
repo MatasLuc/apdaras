@@ -19,18 +19,26 @@ function get_db_connection(): PDO
     $host = env_value('DB_HOST', 'localhost');
     $port = env_value('DB_PORT', '3306');
     $user = env_value('DB_USER', 'root');
-    $password = env_value('DB_PASSWORD', 'slaptazodis');
+    // Daugelyje lokalių MySQL diegimų slaptažodis būna tuščias, todėl numatytoji
+    // reikšmė paliekama tuščia. Naudokite aplinkos kintamąjį DB_PASSWORD, kai
+    // serveryje yra nustatytas slaptažodis.
+    $password = env_value('DB_PASSWORD', '');
     $database = env_value('DB_NAME', 'apdaras');
 
-    $pdo = new PDO(
-        "mysql:host={$host};port={$port};charset=utf8mb4",
-        $user,
-        $password,
-        [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        ]
-    );
+    try {
+        $pdo = new PDO(
+            "mysql:host={$host};port={$port};charset=utf8mb4",
+            $user,
+            $password,
+            [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            ]
+        );
+    } catch (PDOException $e) {
+        error_log('MySQL prisijungimo klaida: ' . $e->getMessage());
+        throw new PDOException('Nepavyko prisijungti prie MySQL serverio. Patikrinkite prisijungimo duomenis.', (int) $e->getCode(), $e);
+    }
 
     $pdo->exec(
         "CREATE DATABASE IF NOT EXISTS `{$database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
