@@ -246,6 +246,12 @@ a { color: inherit; text-decoration: none; }
   border-color: var(--accent);
 }
 
+.form__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
 .form__actions {
   display: flex;
   gap: 12px;

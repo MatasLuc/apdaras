@@ -120,6 +120,15 @@ function find_user_by_email(PDO $pdo, string $email): ?array
     return $user ?: null;
 }
 
+function find_user_by_id(PDO $pdo, int $id): ?array
+{
+    $stmt = $pdo->prepare('SELECT id, email, password_hash, name, role FROM users WHERE id = ? LIMIT 1');
+    $stmt->execute([$id]);
+    $user = $stmt->fetch();
+
+    return $user ?: null;
+}
+
 function create_user(PDO $pdo, string $name, string $email, string $password): int
 {
     $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => password_cost()]);
@@ -136,4 +145,17 @@ function password_cost(): int
     $cost = is_numeric($rounds) ? (int) $rounds : 10;
 
     return max(4, min($cost, 31));
+}
+
+function update_user_profile(PDO $pdo, int $id, string $name, string $email): void
+{
+    $stmt = $pdo->prepare('UPDATE users SET name = ?, email = ? WHERE id = ?');
+    $stmt->execute([$name, $email, $id]);
+}
+
+function update_user_password(PDO $pdo, int $id, string $password): void
+{
+    $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => password_cost()]);
+    $stmt = $pdo->prepare('UPDATE users SET password_hash = ? WHERE id = ?');
+    $stmt->execute([$hash, $id]);
 }
