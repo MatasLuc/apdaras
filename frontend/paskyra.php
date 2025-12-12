@@ -80,7 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="hero__content">
           <div class="badge">Paskyra</div>
           <h1>Labas, <?php echo htmlspecialchars($user['name'], ENT_QUOTES, 'UTF-8'); ?>!</h1>
-          <p class="lead">Atnaujinkite savo duomenis, pasiekite užsakymų istoriją ir išsaugokite pristatymo adresus.</p>
+          <p class="lead">Aiškūs valdikliai profiliui, el. paštui ir slaptažodžiui. Viskas vienoje, modernioje kortelėje.</p>
         </div>
         <div class="hero__visual">
           <div class="hero__panel">

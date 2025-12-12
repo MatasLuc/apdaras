@@ -3,8 +3,8 @@
     <div class="footer__grid">
       <div class="footer__brand">
         <div class="footer__logo">apdaras.lt</div>
-        <p>Kasdien padedame rasti stilių, kuris tinka ir darbui, ir poilsiui. Viskas sukurta ir supakuota Lietuvoje.</p>
-        <div class="footer__chip">Made in LT</div>
+        <p>Premium urban wear sukurta Lietuvoje. Moderni sąsaja, skaidrūs procesai ir greiti pristatymai.</p>
+        <div class="footer__chip">Built for LT · 2024</div>
       </div>
 
       <div>
@@ -12,8 +12,8 @@
         <ul class="footer__list">
           <li><a href="index.php#pagrindinis">Pagrindinis</a></li>
           <li><a href="parduotuve.php">Parduotuvė</a></li>
-          <li><a href="prisijungimas.php">Prisijungimas</a></li>
-          <li><a href="registracija.php">Registracija</a></li>
+          <li><a href="krepselis.php">Krepšelis</a></li>
+          <li><a href="paskyra.php">Paskyra</a></li>
         </ul>
       </div>
 

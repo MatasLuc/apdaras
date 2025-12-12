@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="hero__content">
           <div class="badge">Nauji klientai</div>
           <h1>Sukurkite paskyrą per kelias sekundes</h1>
-          <p class="lead">Registruokitės, kad išsaugotumėte krepšelį, adresus ir gautumėte nuolaidas pirmiesiems užsakymams.</p>
+          <p class="lead">Minimalūs laukai, patvirtinimai realiu laiku ir patvari 7 dienų sesija – pasiruošusi moderniai patirčiai.</p>
           <div class="meta-row">
             <span>🛒 Išsaugotas krepšelis</span>
             <span>🎁 Pasiūlymai nariams</span>

@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="hero__content">
           <div class="badge">Klientai</div>
           <h1>Prisijunkite prie paskyros</h1>
-          <p class="lead">Valdykite užsakymus, sekite pristatymą ir gaukite personalizuotas rekomendacijas prisijungę.</p>
+          <p class="lead">Saugus prisijungimas su moderniais pranešimais ir automatišku grįžimu į jūsų paskyrą – be perteklinių žingsnių.</p>
           <div class="meta-row">
             <span>🔒 Saugus prisijungimas</span>
             <span>🧾 Užsakymų istorija</span>

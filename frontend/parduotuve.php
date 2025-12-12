@@ -35,8 +35,8 @@ unset($_SESSION['cart_alert']);
       <div class="hero__grid">
         <div class="hero__content">
           <div class="badge">Parduotuvė</div>
-          <h1>Kolekcijos, paruoštos iškart</h1>
-          <p class="lead">Marškinėliai, džemperiai ir aksesuarai – atrinkti kasdieniam patogumui ir stiliui. Užbaikite krepšelį per kelias minutes, o mes pasirūpinsime greitu pristatymu.</p>
+          <h1>Kolekcijos, sukurtos modernaus miesto ritmui</h1>
+          <p class="lead">Kiekviena prekių kortelė – kaip SaaS modulis: aiški, greita ir pasiruošusi veikti. Lengvai įsidėkite kiekius, patikrinkite sumas ir tęskite.</p>
           <div class="cta">
             <a class="btn btn--primary" href="#katalogas">Peržiūrėti katalogą</a>
             <a class="btn btn--ghost" href="krepselis.php">Eiti į krepšelį</a>
@@ -45,9 +45,9 @@ unset($_SESSION['cart_alert']);
         <div class="hero__visual">
           <div class="hero__panel">
             <p class="card__eyebrow">Akcija</p>
-            <p class="card__title">„Urban“ džemperis</p>
+            <p class="card__title">„Signal“ džemperis</p>
             <p class="card__price">€39.00</p>
-            <p class="muted">-15% su kodu URBAN15</p>
+            <p class="muted">-15% su kodu SIGNAL15 · Atnaujinta kapsulė</p>
           </div>
           <div class="hero__panel">
             <p class="card__eyebrow">Pristatymas</p>
