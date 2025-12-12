@@ -4,7 +4,6 @@ Internetinės parduotuvės projektas, skirtas prekiauti marškinėliais, džempe
 
 ## Struktūra
 - `backend/` – Node.js/Express API su MySQL.
-- `frontend/` – pradinis svetainės puslapis (`index.php`) su statiniu dizainu, kurį galima patalpinti serveryje, kad apdaras.lt nerodytų „Forbidden“ klaidos.
 - `docs/` – architektūros ir API planas.
 
 ## Greitas paleidimas
@@ -17,10 +16,6 @@ Internetinės parduotuvės projektas, skirtas prekiauti marškinėliais, džempe
    ```
    Paleidimo metu serveris automatiškai sukurs nurodytą duomenų bazę ir lenteles, jei jų nėra.
 3. API pasiekiama `http://localhost:4000`. Numatyti maršrutai aprašyti `docs/api.md`.
-
-### Pradžios puslapio patalpinimas
-- Kataloge `frontend/` esantis `index.php` ir stiliai yra paruošti kopijuoti į jūsų viešojo serverio šaknį.
-- Jei naudojate Apache arba Nginx su PHP, užteks perkelti `frontend/` turinį į dokumentų šaknį (`/var/www/html` ar pan.), kad naršant `apdaras.lt` būtų rodoma pagrindinė svetainė vietoje „Forbidden“ klaidos.
 
 ## Tolimesni žingsniai
 - Pridėti front-end (pvz., Next.js) su parduotuvės ir administratoriaus pultu UI.
