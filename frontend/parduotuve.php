@@ -1,4 +1,24 @@
-<?php require_once __DIR__ . '/auth.php'; ensure_session(); ?>
+<?php
+require_once __DIR__ . '/cart.php';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $productId = $_POST['product_id'] ?? '';
+    $quantity = (int) ($_POST['qty'] ?? 1);
+
+    $added = add_cart_item($productId, $quantity);
+
+    $_SESSION['cart_alert'] = $added
+        ? ['type' => 'success', 'text' => $added['name'] . ' pridėta į krepšelį.']
+        : ['type' => 'error', 'text' => 'Nepavyko pridėti prekės.'];
+
+    header('Location: parduotuve.php');
+    exit;
+}
+
+$catalog = cart_catalog();
+$alert = $_SESSION['cart_alert'] ?? null;
+unset($_SESSION['cart_alert']);
+?>
 <!DOCTYPE html>
 <html lang="lt">
 <head>
@@ -19,7 +39,7 @@
           <p class="lead">Marškinėliai, džemperiai ir aksesuarai – atrinkti kasdieniam patogumui ir stiliui. Užbaikite krepšelį per kelias minutes, o mes pasirūpinsime greitu pristatymu.</p>
           <div class="cta">
             <a class="btn btn--primary" href="#katalogas">Peržiūrėti katalogą</a>
-            <a class="btn btn--ghost" href="prisijungimas.php">Prisijungti</a>
+            <a class="btn btn--ghost" href="krepselis.php">Eiti į krepšelį</a>
           </div>
         </div>
         <div class="hero__visual">
@@ -46,22 +66,34 @@
             <p class="badge">Populiaru</p>
             <h2>Prekių kategorijos</h2>
           </div>
+          <?php if ($alert): ?>
+            <div class="alert alert--<?php echo htmlspecialchars($alert['type'], ENT_QUOTES, 'UTF-8'); ?>">
+              <?php echo htmlspecialchars($alert['text'], ENT_QUOTES, 'UTF-8'); ?>
+            </div>
+          <?php endif; ?>
+
           <div class="grid grid--three">
-            <article class="card card--panel">
-              <h3>Marškinėliai</h3>
-              <p>Minimalistiniai, oversize ir sportiniai modeliai kiekvienam skoniui.</p>
-              <a class="text-link" href="#">Į krepšelį</a>
-            </article>
-            <article class="card card--panel">
-              <h3>Džemperiai</h3>
-              <p>Šilti ir patogūs džemperiai su užtrauktuku ir be jo.</p>
-              <a class="text-link" href="#">Į krepšelį</a>
-            </article>
-            <article class="card card--panel">
-              <h3>Aksesuarai</h3>
-              <p>Kepuraitės, kuprinės, kojinės ir kiti akcentai jūsų stiliui.</p>
-              <a class="text-link" href="#">Į krepšelį</a>
-            </article>
+            <?php foreach ($catalog as $product): ?>
+              <article class="card card--product">
+                <div class="card__header">
+                  <span class="pill"><?php echo htmlspecialchars($product['category'], ENT_QUOTES, 'UTF-8'); ?></span>
+                  <span class="pill pill--ghost"><?php echo htmlspecialchars($product['tag'], ENT_QUOTES, 'UTF-8'); ?></span>
+                </div>
+                <h3><?php echo htmlspecialchars($product['name'], ENT_QUOTES, 'UTF-8'); ?></h3>
+                <p class="muted">Lengvai derinami siluetai, pagaminti iš kokybiškos medvilnės ir paruošti greitam pristatymui.</p>
+                <div class="card__meta">
+                  <span class="card__price">€<?php echo number_format($product['price'], 2, '.', ''); ?></span>
+                  <form method="post" class="product-form">
+                    <input type="hidden" name="product_id" value="<?php echo htmlspecialchars($product['id'], ENT_QUOTES, 'UTF-8'); ?>">
+                    <label class="quantity">
+                      <span class="sr-only">Kiekis</span>
+                      <input type="number" name="qty" min="1" max="20" value="1">
+                    </label>
+                    <button class="btn btn--primary" type="submit">Į krepšelį</button>
+                  </form>
+                </div>
+              </article>
+            <?php endforeach; ?>
           </div>
         </div>
       </div>
