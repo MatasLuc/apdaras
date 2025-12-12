@@ -10,16 +10,16 @@
   <header class="topbar">
     <div class="brand">apdaras.lt</div>
     <nav class="nav">
-      <a href="#pagrindinis">Pagrindinis</a>
-      <a href="#parduotuve">Parduotuvė</a>
-      <a href="#prisijungti">Prisijungimas</a>
-      <a href="#registracija">Registracija</a>
+      <a href="index.php#pagrindinis">Pagrindinis</a>
+      <a href="parduotuve.php">Parduotuvė</a>
+      <a href="prisijungimas.php">Prisijungimas</a>
+      <a href="registracija.php">Registracija</a>
       <a href="#privalumai">Kodėl mes?</a>
       <a href="#kontaktai">Kontaktai</a>
     </nav>
     <div class="actions">
-      <a class="btn btn--ghost" href="#parduotuve">Krepšelis</a>
-      <a class="btn btn--primary" href="#prisijungti">Paskyra</a>
+      <a class="btn btn--ghost" href="parduotuve.php">Krepšelis</a>
+      <a class="btn btn--primary" href="prisijungimas.php">Paskyra</a>
     </div>
   </header>
 
@@ -29,7 +29,7 @@
       <h1>apdaras.lt</h1>
       <p class="lead">Stilingi marškinėliai, džemperiai ir aksesuarai kasdienai. Užsisakyk internetu ir gauk pristatymą į namus.</p>
       <div class="cta">
-        <a class="btn btn--primary" href="#parduotuve">Peržiūrėti prekes</a>
+        <a class="btn btn--primary" href="parduotuve.php">Peržiūrėti prekes</a>
         <a class="btn btn--ghost" href="#privalumai">Kodėl apdaras.lt?</a>
       </div>
     </div>
@@ -64,55 +64,27 @@
       </div>
     </section>
 
-    <section id="parduotuve" class="section">
+    <section class="section">
       <div class="section__header">
-        <p class="badge">Parduotuvė</p>
-        <h2>Populiarios kategorijos</h2>
+        <p class="badge">Pagrindiniai puslapiai</p>
+        <h2>Kur norite tęsti?</h2>
       </div>
       <div class="grid grid--three">
         <article class="card card--panel">
-          <h3>Marškinėliai</h3>
-          <p>Minimalistiniai, oversize ir sportiniai modeliai kiekvienam skoniui.</p>
-          <a class="text-link" href="#">Peržiūrėti</a>
+          <h3>Parduotuvė</h3>
+          <p>Peržiūrėkite populiariausias kategorijas ir įsidėkite prekes į krepšelį.</p>
+          <a class="text-link" href="parduotuve.php">Eiti į parduotuvę</a>
         </article>
         <article class="card card--panel">
-          <h3>Džemperiai</h3>
-          <p>Šilti ir patogūs džemperiai su užtrauktuku ir be jo.</p>
-          <a class="text-link" href="#">Peržiūrėti</a>
+          <h3>Prisijungimas</h3>
+          <p>Valdykite užsakymus ir sekite pristatymą prisijungę prie paskyros.</p>
+          <a class="text-link" href="prisijungimas.php">Prisijungti</a>
         </article>
         <article class="card card--panel">
-          <h3>Aksesuarai</h3>
-          <p>Kepuraitės, kuprinės, kojinės ir kiti akcentai jūsų stiliui.</p>
-          <a class="text-link" href="#">Peržiūrėti</a>
+          <h3>Registracija</h3>
+          <p>Sukurkite paskyrą, išsaugokite adresus ir gaukite nuolaidų kodus.</p>
+          <a class="text-link" href="registracija.php">Registruotis</a>
         </article>
-      </div>
-    </section>
-
-    <section id="prisijungti" class="section section--muted">
-      <div class="grid grid--two align-center">
-        <div>
-          <p class="badge">Klientai</p>
-          <h2>Prisijunkite prie savo paskyros</h2>
-          <p>Valdykite užsakymus, sekite pristatymą ir gaukite personalizuotas rekomendacijas prisijungę.</p>
-        </div>
-        <div class="cta">
-          <a class="btn btn--primary" href="#">Prisijungti</a>
-          <a class="btn btn--ghost" href="#registracija">Neturite paskyros?</a>
-        </div>
-      </div>
-    </section>
-
-    <section id="registracija" class="section">
-      <div class="grid grid--two align-center">
-        <div>
-          <p class="badge">Nauji klientai</p>
-          <h2>Sukurkite paskyrą per kelias sekundes</h2>
-          <p>Registruokitės, kad išsaugotumėte krepšelį, adresus ir gautumėte nuolaidas pirmiesiems užsakymams.</p>
-        </div>
-        <div class="cta">
-          <a class="btn btn--primary" href="#">Registruotis</a>
-          <a class="btn btn--ghost" href="#parduotuve">Naršyti be registracijos</a>
-        </div>
       </div>
     </section>
 
@@ -147,9 +119,9 @@
           <p class="footer__title">Navigacija</p>
           <ul class="footer__list">
             <li><a href="#pagrindinis">Pagrindinis</a></li>
-            <li><a href="#parduotuve">Parduotuvė</a></li>
-            <li><a href="#privalumai">Kodėl mes?</a></li>
-            <li><a href="#registracija">Registracija</a></li>
+            <li><a href="parduotuve.php">Parduotuvė</a></li>
+            <li><a href="prisijungimas.php">Prisijungimas</a></li>
+            <li><a href="registracija.php">Registracija</a></li>
           </ul>
         </div>
 
