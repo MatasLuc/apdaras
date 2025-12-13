@@ -62,13 +62,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($hasVariations && !$variationId) {
         $errorMsg = "Būtina pasirinkti variaciją (dydį ar spalvą).";
-    } elseif ($product['allow_personalization'] && empty($persDataRaw) && !empty($_POST['is_personalized_intent'])) {
-         // Jei vartotojas bandė personalizuoti, bet kažkas nepavyko
-         // (Šioje versijoje leidžiam ir tuščią, jei vartotojas nieko neįrašė)
     }
 
     if (!$errorMsg) {
-        // Jei nėra teksto, nesiunčiam personalizacijos duomenų (kad krepšelyje būtų "švari" prekė)
+        // Jei nėra teksto, nesiunčiam personalizacijos duomenų
         if ($persDataRaw) {
             $decoded = json_decode($persDataRaw, true);
             if (empty($decoded['text'])) {
@@ -103,6 +100,7 @@ unset($_SESSION['cart_alert']);
   <title><?php echo htmlspecialchars($product['title']); ?> – apdaras.lt</title>
   <link rel="stylesheet" href="./assets/styles.css" />
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700&family=Playfair+Display:wght@700&family=Montserrat:wght@900&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
   <?php include __DIR__ . '/partials/nav.php'; ?>
@@ -130,45 +128,42 @@ unset($_SESSION['cart_alert']);
                 <div class="editor-thumbs">
                     <?php foreach ($images as $idx => $img): ?>
                         <div class="editor-thumb <?php echo $idx === 0 ? 'is-active' : ''; ?>" onclick="setEditorImage('<?php echo $img['image_url']; ?>', this)">
-                            <img src="<?php echo htmlspecialchars($img['image_url']); ?>" alt="">
+                            <img src="<?php echo htmlspecialchars($img['image_url']); ?>" alt="" crossorigin="anonymous">
                         </div>
                     <?php endforeach; ?>
                 </div>
 
                 <div class="editor-stage">
                     <div class="editor-canvas-wrap" id="canvasWrap">
-                        <img id="editorBg" src="<?php echo htmlspecialchars($images[0]['image_url']); ?>" class="editor-bg" alt="">
+                        <img id="editorBg" src="<?php echo htmlspecialchars($images[0]['image_url']); ?>" class="editor-bg" alt="" crossorigin="anonymous">
+                        
                         <div class="editor-overlay" id="editorOverlay">
-                            <div id="textLayer" class="overlay-text" style="display:none; color: #000000; font-size: 24px; font-family: 'Roboto', sans-serif;"></div>
+                            <div id="transformBox" class="transform-box" style="display:none;">
+                                <p id="textElement" style="font-family: 'Roboto', sans-serif; font-size: 24px; color: #000000;"></p>
+                                <div class="resize-handle" id="resizeHandle"></div>
+                                <div class="rotate-handle" id="rotateHandle"></div>
+                            </div>
                         </div>
+                    </div>
+                    <div id="loadingOverlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); z-index:10; justify-content:center; align-items:center;">
+                        <span class="strong">Ruošiamas dizainas...</span>
                     </div>
                 </div>
 
                 <div class="editor-controls">
-                    <div>
-                        <h1 style="margin: 0; font-size: 24px;"><?php echo htmlspecialchars($product['title']); ?></h1>
-                        <p class="big-price">€<?php echo number_format($product['discount_price'] ?: $product['price'], 2); ?></p>
-                    </div>
-
                     <div class="control-group">
-                        <p class="card__eyebrow">Tekstas</p>
+                        <p class="card__eyebrow">Redagavimas</p>
                         <input type="text" id="TextInput" placeholder="Jūsų tekstas..." class="form__field" style="width: 100%; padding: 10px;">
                         
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                            <label class="form__field">
-                                <span>Šriftas</span>
-                                <select id="FontSelect">
-                                    <option value="'Roboto', sans-serif">Roboto</option>
-                                    <option value="'Playfair Display', serif">Playfair</option>
-                                    <option value="'Montserrat', sans-serif">Montserrat</option>
-                                    <option value="monospace">Monospace</option>
-                                </select>
-                            </label>
-                            <label class="form__field">
-                                <span>Dydis</span>
-                                <input type="number" id="SizeInput" value="24" min="10" max="100">
-                            </label>
-                        </div>
+                        <label class="form__field">
+                            <span>Šriftas</span>
+                            <select id="FontSelect">
+                                <option value="'Roboto', sans-serif">Roboto</option>
+                                <option value="'Playfair Display', serif">Playfair</option>
+                                <option value="'Montserrat', sans-serif">Montserrat</option>
+                                <option value="monospace">Monospace</option>
+                            </select>
+                        </label>
 
                         <div>
                             <span style="font-size: 13px; font-weight: 700; display:block; margin-bottom: 6px;">Spalva</span>
@@ -181,6 +176,11 @@ unset($_SESSION['cart_alert']);
                                 <button type="button" class="color-btn" style="background: #fbbf24;" data-color="#fbbf24"></button>
                             </div>
                         </div>
+                    </div>
+
+                    <div>
+                        <h1 style="margin: 0; font-size: 24px;"><?php echo htmlspecialchars($product['title']); ?></h1>
+                        <p class="big-price">€<?php echo number_format($product['discount_price'] ?: $product['price'], 2); ?></p>
                     </div>
 
                     <?php if ($groupedVariations): ?>
@@ -203,46 +203,50 @@ unset($_SESSION['cart_alert']);
 
                     <div style="display: flex; gap: 10px; margin-top: auto;">
                         <input type="number" name="qty" value="1" min="1" max="20" style="width: 70px; text-align: center; border-radius: 12px; border: 1px solid var(--stroke);">
-                        <button type="submit" class="btn btn--primary btn--block">Į krepšelį</button>
+                        <button type="submit" id="submitBtn" class="btn btn--primary btn--block">Į krepšelį</button>
                     </div>
                 </div>
             </div>
         </form>
 
         <script>
-            // PERSONALIZAVIMO LOGIKA
+            // --- INTERAKTYVUS REDAKTORIUS ---
             const textInput = document.getElementById('TextInput');
-            const textLayer = document.getElementById('textLayer');
+            const transformBox = document.getElementById('transformBox');
+            const textElement = document.getElementById('textElement');
             const fontSelect = document.getElementById('FontSelect');
-            const sizeInput = document.getElementById('SizeInput');
             const colorPicker = document.getElementById('ColorPicker');
             const persInput = document.getElementById('personalizationInput');
+            const canvasWrap = document.getElementById('canvasWrap');
 
             // Būsena
             let state = {
                 text: '',
                 color: '#000000',
-                fontSize: 24,
-                fontFamily: "'Roboto', sans-serif"
+                fontFamily: "'Roboto', sans-serif",
+                x: 50, // Procentais
+                y: 50,
+                scale: 1,
+                rotation: 0
             };
 
             function updateView() {
-                textLayer.innerText = state.text;
-                textLayer.style.display = state.text ? 'block' : 'none';
-                textLayer.style.color = state.color;
-                textLayer.style.fontSize = state.fontSize + 'px';
-                textLayer.style.fontFamily = state.fontFamily;
+                textElement.innerText = state.text;
+                transformBox.style.display = state.text ? 'block' : 'none';
                 
-                if (state.text) {
-                    persInput.value = JSON.stringify(state);
-                } else {
-                    persInput.value = '';
-                }
+                textElement.style.color = state.color;
+                textElement.style.fontFamily = state.fontFamily;
+                
+                // Pozicija ir Transformacijos
+                transformBox.style.left = state.x + '%';
+                transformBox.style.top = state.y + '%';
+                // scale() keičia dydį vizualiai
+                transformBox.style.transform = `translate(-50%, -50%) rotate(${state.rotation}deg) scale(${state.scale})`;
             }
 
+            // Pagrindiniai nustatymai
             textInput.addEventListener('input', (e) => { state.text = e.target.value; updateView(); });
             fontSelect.addEventListener('change', (e) => { state.fontFamily = e.target.value; updateView(); });
-            sizeInput.addEventListener('input', (e) => { state.fontSize = e.target.value; updateView(); });
 
             colorPicker.addEventListener('click', (e) => {
                 if(e.target.classList.contains('color-btn')) {
@@ -258,33 +262,144 @@ unset($_SESSION['cart_alert']);
                 document.querySelectorAll('.editor-thumb').forEach(t => t.classList.remove('is-active'));
                 el.classList.add('is-active');
             }
-            
-            // Paprastas drag-and-drop
-            let isDragging = false;
-            let offset = { x: 0, y: 0 };
 
-            textLayer.addEventListener('mousedown', (e) => {
+            // --- DRAG, ROTATE, SCALE LOGIKA ---
+            let isDragging = false;
+            let isRotating = false;
+            let isResizing = false;
+            let startX, startY;
+            let startAngle = 0;
+            let startScale = 1;
+
+            // Helper: Mouse pozicija konteineryje
+            function getMousePos(e) {
+                const rect = canvasWrap.getBoundingClientRect();
+                return {
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top,
+                    rect
+                };
+            }
+
+            // 1. Dragging (Judinimas)
+            transformBox.addEventListener('mousedown', (e) => {
+                if(e.target.classList.contains('rotate-handle') || e.target.classList.contains('resize-handle')) return;
                 isDragging = true;
-                textLayer.style.cursor = 'grabbing';
+                transformBox.classList.add('is-selected');
+                e.preventDefault();
             });
 
-            document.addEventListener('mousemove', (e) => {
-                if (!isDragging) return;
-                const container = document.getElementById('canvasWrap').getBoundingClientRect();
-                
-                let x = e.clientX - container.left;
-                let y = e.clientY - container.top;
-                
-                let percentX = (x / container.width) * 100;
-                let percentY = (y / container.height) * 100;
+            // 2. Rotating (Sukimas)
+            document.getElementById('rotateHandle').addEventListener('mousedown', (e) => {
+                isRotating = true;
+                const boxRect = transformBox.getBoundingClientRect();
+                const centerX = boxRect.left + boxRect.width / 2;
+                const centerY = boxRect.top + boxRect.height / 2;
+                // Kampas pelės paspaudimo metu
+                startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) - (state.rotation * Math.PI / 180);
+                e.stopPropagation();
+                e.preventDefault();
+            });
 
-                textLayer.style.left = percentX + '%';
-                textLayer.style.top = percentY + '%';
+            // 3. Resizing (Didinimas)
+            document.getElementById('resizeHandle').addEventListener('mousedown', (e) => {
+                isResizing = true;
+                const rect = transformBox.getBoundingClientRect();
+                // Pradinis atstumas nuo centro
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                const dist = Math.hypot(e.clientX - centerX, e.clientY - centerY);
+                startScale = state.scale / dist; // Išsaugom santykį
+                e.stopPropagation();
+                e.preventDefault();
+            });
+
+            // Global Mouse Move
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging && !isRotating && !isResizing) return;
+                
+                const pos = getMousePos(e);
+
+                if (isDragging) {
+                    state.x = (pos.x / pos.rect.width) * 100;
+                    state.y = (pos.y / pos.rect.height) * 100;
+                } 
+                else if (isRotating) {
+                    const boxRect = transformBox.getBoundingClientRect();
+                    const centerX = boxRect.left + boxRect.width / 2;
+                    const centerY = boxRect.top + boxRect.height / 2;
+                    const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
+                    state.rotation = (angle - startAngle) * (180 / Math.PI);
+                }
+                else if (isResizing) {
+                    const boxRect = transformBox.getBoundingClientRect();
+                    const centerX = boxRect.left + boxRect.width / 2;
+                    const centerY = boxRect.top + boxRect.height / 2;
+                    const dist = Math.hypot(e.clientX - centerX, e.clientY - centerY);
+                    // Minimalus scale 0.2
+                    state.scale = Math.max(0.2, dist * startScale);
+                }
+
+                updateView();
             });
 
             document.addEventListener('mouseup', () => {
                 isDragging = false;
-                textLayer.style.cursor = 'move';
+                isRotating = false;
+                isResizing = false;
+            });
+
+            // --- FORMA IR SNAPSHOT ---
+            const form = document.getElementById('productForm');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+
+            form.addEventListener('submit', async (e) => {
+                // Jei nėra teksto, tiesiog siunčiam
+                if (!state.text) {
+                    persInput.value = '';
+                    return;
+                }
+                
+                e.preventDefault(); // Sustabdom standartinį siuntimą
+                loadingOverlay.style.display = 'flex';
+
+                // Nuimame selekcijos rėmelius prieš fotkinant
+                transformBox.classList.remove('is-selected');
+
+                try {
+                    // 1. Generuojame paveikslėlį
+                    const canvas = await html2canvas(canvasWrap, {
+                        useCORS: true, // Svarbu jei paveikslėliai iš kito domeno
+                        scale: 2 // Geresnė kokybė
+                    });
+                    
+                    const dataUrl = canvas.toDataURL('image/png');
+
+                    // 2. Siunčiame į serverį
+                    const uploadRes = await fetch('api/upload.php', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            fileName: 'design-snapshot.png',
+                            dataUrl: dataUrl
+                        })
+                    });
+
+                    if (!uploadRes.ok) throw new Error('Nepavyko išsaugoti dizaino');
+                    const uploadData = await uploadRes.json();
+
+                    // 3. Išsaugome viską į hidden input
+                    state.snapshotUrl = uploadData.url;
+                    persInput.value = JSON.stringify(state);
+
+                    // 4. Pateikiame formą
+                    form.submit();
+
+                } catch (err) {
+                    alert('Klaida kuriant dizainą: ' + err.message);
+                    loadingOverlay.style.display = 'none';
+                    transformBox.classList.add('is-selected');
+                }
             });
         </script>
 
