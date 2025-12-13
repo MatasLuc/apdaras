@@ -11,7 +11,6 @@ function respond_json($data, int $status = 200): void {
     http_response_code($status); echo json_encode($data); exit;
 }
 
-// Skaitome input'ą JSON formatu (PUT užklausoms)
 $input = json_decode(file_get_contents('php://input') ?: 'null', true);
 $input = is_array($input) ? $input : [];
 
@@ -22,9 +21,7 @@ if (($user['role'] ?? '') !== 'admin') {
     respond_json(['message' => 'Forbidden'], 403);
 }
 
-// Analizuojame kelią, kad gautume ID (pvz., /orders/1)
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '';
-// Paprastas būdas gauti ID: jei kelias baigiasi skaičiumi
 $segments = explode('/', trim($path, '/'));
 $orderId = end($segments);
 if (!ctype_digit($orderId)) {
@@ -35,7 +32,9 @@ try {
     $method = $_SERVER['REQUEST_METHOD'];
     
     if ($method === 'GET') {
-        // ... (GET logika lieka ta pati) ...
+        // Filtras individualiems užsakymams
+        $customOnly = isset($_GET['custom_only']);
+
         $sql = "
             SELECT o.*, 
                    COALESCE(u.email, o.guest_email) as contact_email,
@@ -44,18 +43,35 @@ try {
             LEFT JOIN users u ON o.user_id = u.id
             ORDER BY o.created_at DESC
         ";
-        $orders = $pdo->query($sql)->fetchAll();
         
-        foreach ($orders as &$ord) {
+        $orders = $pdo->query($sql)->fetchAll();
+        $result = [];
+
+        foreach ($orders as $ord) {
             $stmtItems = $pdo->prepare("SELECT * FROM order_items WHERE order_id = ?");
             $stmtItems->execute([$ord['id']]);
-            $ord['items'] = $stmtItems->fetchAll();
+            $items = $stmtItems->fetchAll();
+            
+            // Jei prašoma tik custom užsakymų, tikriname ar bent viena prekė turi personalizacijos duomenų
+            $hasCustom = false;
+            foreach ($items as $item) {
+                if (!empty($item['personalization_data'])) {
+                    $hasCustom = true;
+                    break;
+                }
+            }
+
+            if ($customOnly && !$hasCustom) {
+                continue; // Praleidžiam paprastus užsakymus
+            }
+            
+            $ord['items'] = $items;
+            $result[] = $ord;
         }
         
-        respond_json($orders);
+        respond_json($result);
     }
 
-    // NAUJAS: PUT metodas statusui atnaujinti
     if ($method === 'PUT' && $orderId) {
         $newStatus = $input['status'] ?? null;
         $allowedStatuses = ['new', 'paid', 'shipped', 'completed', 'cancelled'];
