@@ -13,7 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
         variationIds: new Set(),
         relatedIds: new Set(),
         editingId: null,
-        orders: []
+        orders: [],
+        customOrders: [] // Naujas masyvas individualiems
     };
 
     const elements = {
@@ -37,7 +38,10 @@ document.addEventListener('DOMContentLoaded', () => {
         cancelEditBtn: document.getElementById('cancel-edit'),
         openNewProductBtn: document.getElementById('open-new-product'),
         ordersTable: document.getElementById('orders-table'),
-        refreshOrdersBtn: document.getElementById('refresh-orders')
+        refreshOrdersBtn: document.getElementById('refresh-orders'),
+        // Nauji elementai
+        customOrdersList: document.getElementById('custom-orders-list'),
+        refreshCustomOrdersBtn: document.getElementById('refresh-custom-orders')
     };
 
     function formatCurrency(value) {
@@ -104,6 +108,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 if (target === 'orders') {
                     loadOrders();
+                } else if (target === 'custom-orders') {
+                    loadCustomOrders();
                 }
             });
         });
@@ -147,6 +153,78 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             console.error(e);
         }
+    }
+
+    // --- INDIVIDUALŪS UŽSAKYMAI ---
+    async function loadCustomOrders() {
+        if (!elements.customOrdersList) return;
+        try {
+            // Naudojame tą patį endpointą su filtru
+            const orders = await fetchJson('/orders?custom_only=1');
+            state.customOrders = orders;
+            renderCustomOrders();
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function renderCustomOrders() {
+        elements.customOrdersList.innerHTML = '';
+        if (!state.customOrders.length) {
+            elements.customOrdersList.innerHTML = '<div class="alert">Nėra individualių užsakymų.</div>';
+            return;
+        }
+
+        state.customOrders.forEach(order => {
+            // Randame tik custom prekes
+            const customItems = (order.items || []).filter(item => item.personalization_data);
+            
+            const card = document.createElement('div');
+            card.className = 'card card--panel';
+            
+            let itemsHtml = '';
+            customItems.forEach(item => {
+                let persData = {};
+                try { persData = JSON.parse(item.personalization_data); } catch(e) {}
+                
+                const imgSrc = persData.snapshotUrl ? persData.snapshotUrl : '';
+                const thumbHtml = imgSrc 
+                    ? `<a href="${imgSrc}" target="_blank"><img src="${imgSrc}" class="custom-order-thumb" alt="Dizainas"></a>` 
+                    : '<div class="custom-order-thumb" style="display:flex;align-items:center;justify-content:center;">Nėra foto</div>';
+                
+                itemsHtml += `
+                    <div class="custom-order-preview">
+                        ${thumbHtml}
+                        <div class="custom-details">
+                            <strong>${item.product_name}</strong>
+                            <p>Variacija: ${item.variation_info || '-'}</p>
+                            <p>Tekstas: <strong>${persData.text || '-'}</strong></p>
+                            <p>Šriftas: ${persData.fontFamily || '-'}</p>
+                            <p>Spalva: <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${persData.color};border:1px solid #ccc;"></span> ${persData.color}</p>
+                        </div>
+                    </div>
+                `;
+            });
+
+            const date = new Date(order.created_at).toLocaleString('lt-LT');
+            
+            card.innerHTML = `
+                <div class="card__header" style="justify-content:space-between; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:10px;">
+                    <div>
+                        <span class="badge">#${order.id}</span>
+                        <span class="muted">${date}</span>
+                    </div>
+                    <strong>${order.contact_email}</strong>
+                </div>
+                <div>
+                    ${itemsHtml}
+                </div>
+                <div style="margin-top:10px; text-align:right;">
+                    <a href="mailto:${order.contact_email}?subject=Dėl užsakymo #${order.id}" class="btn btn--ghost btn--soft">Susisiekti</a>
+                </div>
+            `;
+            elements.customOrdersList.appendChild(card);
+        });
     }
 
     // Funkcija statuso atnaujinimui (prieinama globaliai, nes kviečiama iš onchange)
@@ -553,6 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if(elements.openNewProductBtn) elements.openNewProductBtn.addEventListener('click', () => { resetForm(); showSection('product-editor'); });
     if(elements.cancelEditBtn) elements.cancelEditBtn.addEventListener('click', () => { if(confirm('Atšaukti?')) showSection('catalog-summary'); });
     if(elements.refreshOrdersBtn) elements.refreshOrdersBtn.addEventListener('click', loadOrders);
+    if(elements.refreshCustomOrdersBtn) elements.refreshCustomOrdersBtn.addEventListener('click', loadCustomOrders);
 
     document.getElementById('category-form').addEventListener('submit', async (e) => { e.preventDefault(); await upsertCategory(new FormData(e.target)); e.target.reset(); });
     document.getElementById('subcategory-form').addEventListener('submit', async (e) => { e.preventDefault(); await upsertCategory(new FormData(e.target), true); e.target.reset(); });
