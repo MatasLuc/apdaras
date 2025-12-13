@@ -8,6 +8,12 @@ $userRole = $_SESSION['user_role'] ?? 'customer';
 $cartCount = cart_count();
 $accountUrl = $isLoggedIn ? 'paskyra.php' : 'prisijungimas.php';
 $accountLabel = $isLoggedIn ? 'Labas, ' . $userName : 'Paskyra';
+
+// NAUJA: Gauname naujų užsakymų skaičių, jei adminas
+$newOrdersCount = 0;
+if ($userRole === 'admin') {
+    $newOrdersCount = get_new_orders_count();
+}
 ?>
 <header class="topbar">
   <div class="container topbar__inner">
@@ -34,8 +40,12 @@ $accountLabel = $isLoggedIn ? 'Labas, ' . $userName : 'Paskyra';
           <button class="account__toggle" type="button">
             <span class="account__label">Labas,</span>
             <span class="account__name"><?php echo htmlspecialchars($userName, ENT_QUOTES, 'UTF-8'); ?></span>
-            <?php if ($cartCount > 0): ?>
-              <span class="account__badge" aria-label="Krepšelyje yra prekių"><?php echo $cartCount > 9 ? '9+' : $cartCount; ?></span>
+            
+            <?php 
+               $totalBadge = $cartCount + $newOrdersCount;
+               if ($totalBadge > 0): 
+            ?>
+              <span class="account__badge" aria-label="Pranešimai"><?php echo $totalBadge > 9 ? '9+' : $totalBadge; ?></span>
             <?php endif; ?>
           </button>
           <div class="account__menu">
@@ -47,10 +57,18 @@ $accountLabel = $isLoggedIn ? 'Labas, ' . $userName : 'Paskyra';
                 <span class="pill">Tuščias</span>
               <?php endif; ?>
             </a>
+            
             <a href="paskyra.php">Paskyros redagavimas</a>
+            
             <?php if ($userRole === 'admin'): ?>
-              <a href="administravimas.php">Administravimas</a>
+              <a class="account__menu-row" href="administravimas.php">
+                  <span>Administravimas</span>
+                  <?php if ($newOrdersCount > 0): ?>
+                    <span class="pill pill--alert"><?php echo $newOrdersCount; ?> nauji</span>
+                  <?php endif; ?>
+              </a>
             <?php endif; ?>
+            
             <a href="logout.php">Atsijungti</a>
           </div>
         </div>
