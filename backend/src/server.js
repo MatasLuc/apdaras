@@ -3,7 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import fs from 'fs/promises';
 import path from 'path';
-import { getPool, initDb } from './db.js';
+import { initDb } from './db.js';
 import authRoutes from './routes/auth.js';
 import categoryRoutes from './routes/categories.js';
 import productRoutes from './routes/products.js';
@@ -28,16 +28,7 @@ app.use(express.json({ limit: '12mb' }));
 const uploadDir = path.join(process.cwd(), 'upload');
 app.use('/upload', express.static(uploadDir));
 
-app.get('/health', async (_req, res) => {
-  try {
-    const db = getPool();
-    const [rows] = await db.query('SELECT 1 AS ok');
-    const dbOk = Boolean(rows?.[0]?.ok);
-    return res.json({ ok: true, db: dbOk });
-  } catch (err) {
-    return res.status(500).json({ ok: false, message: 'DB sveikatos patikra nepavyko', detail: err.message });
-  }
-});
+app.get('/health', (_req, res) => res.json({ ok: true }));
 app.use('/auth', authRoutes);
 app.use('/categories', categoryRoutes);
 app.use('/products', productRoutes);
@@ -54,12 +45,15 @@ async function startServer() {
     await initDb();
     await fs.mkdir(uploadDir, { recursive: true });
     app.listen(port, () => {
-      // eslint-disable-next-line no-console
       console.log(`API klausosi ${port} prievade`);
     });
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('Nepavyko inicijuoti duomenų bazės:', err.message);
+    const errorMsg = `KLAIDA: ${err.message}\nSTACK: ${err.stack}\n`;
+    try {
+      await fs.writeFile('API_STARTUP_ERROR.txt', errorMsg);
+    } catch (e) {
+      console.error('Nepavyko įrašyti klaidos failo');
+    }
     process.exit(1);
   }
 }

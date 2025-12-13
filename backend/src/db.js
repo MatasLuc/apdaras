@@ -160,9 +160,7 @@ export async function initDb() {
       password: DB_PASSWORD
     });
   } catch (err) {
-    throw new Error(
-      `Nepavyko prisijungti prie duomenų bazės (${DB_HOST}:${DB_PORT}) naudotoju ${DB_USER}: ${err.message}`
-    );
+    throw new Error(`Nepavyko prisijungti: ${err.message}`);
   }
 
   await connection.query(
