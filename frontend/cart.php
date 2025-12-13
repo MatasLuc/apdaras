@@ -14,7 +14,6 @@ function ensure_cart_initialized(): void
 // --- Admin pagalbinė funkcija ---
 function get_new_orders_count(): int
 {
-    // Tikriname tik jei vartotojas prisijungęs ir yra adminas
     if (($_SESSION['user_role'] ?? '') !== 'admin') {
         return 0;
     }
@@ -47,10 +46,10 @@ function cart_catalog(): array
 
     $pdo = get_db_connection();
 
-    // PAKEITIMAS: Pridėtas 'has_variations' stulpelis su subquery
     $sql = "SELECT p.id, p.title, p.price, p.discount_price, p.stock, p.ribbon, p.tags, p.summary, p.subtitle,
                    (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC LIMIT 1) as image_url,
                    (SELECT COUNT(*) FROM product_variations WHERE product_id = p.id) > 0 as has_variations,
+                   p.allow_personalization,
                    GROUP_CONCAT(DISTINCT CONCAT(c.id, ':', c.name) ORDER BY c.name SEPARATOR '|') AS categories
             FROM products p
             LEFT JOIN product_categories pc ON pc.product_id = p.id
@@ -86,7 +85,8 @@ function cart_catalog(): array
             'tag' => $tag ?: 'Nauja',
             'summary' => (string) ($product['summary'] ?? ($product['subtitle'] ?? '')),
             'stock' => isset($product['stock']) ? (int) $product['stock'] : null,
-            'has_variations' => (bool)$product['has_variations'], // Svarbu parduotuve.php logikai
+            'has_variations' => (bool)$product['has_variations'],
+            'allow_personalization' => (bool)($product['allow_personalization'] ?? false)
         ];
     }
 
@@ -127,7 +127,7 @@ function cart_items(): array
     $cartId = get_active_cart_id($pdo);
 
     $sql = "
-        SELECT ci.id as item_id, ci.quantity, ci.variation_id,
+        SELECT ci.id as item_id, ci.quantity, ci.variation_id, ci.personalization_data,
                p.id as product_id, p.title as name, p.price, p.discount_price, p.stock,
                (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC LIMIT 1) as image_url,
                (SELECT value FROM variation_values WHERE id = ci.variation_id) as variation_name,
@@ -145,6 +145,13 @@ function cart_items(): array
     $items = [];
     foreach ($rows as $row) {
         $price = $row['discount_price'] ?: $row['price'];
+        
+        $persData = $row['personalization_data'] ? json_decode($row['personalization_data'], true) : null;
+        $persText = null;
+        if ($persData && !empty($persData['text'])) {
+             $persText = "Personalizuota: \"{$persData['text']}\"";
+        }
+
         $items[] = [
             'item_id' => $row['item_id'],
             'id' => $row['product_id'],
@@ -154,6 +161,7 @@ function cart_items(): array
             'qty' => (int)$row['quantity'],
             'variation_id' => $row['variation_id'],
             'variation_text' => $row['variation_name'] ? "{$row['attribute_name']}: {$row['variation_name']}" : null,
+            'personalization_text' => $persText,
             'category' => 'Prekė',
             'stock' => (int)$row['stock']
         ];
@@ -162,12 +170,19 @@ function cart_items(): array
     return $items;
 }
 
-function add_cart_item(string $productId, int $quantity = 1, ?int $variationId = null): bool
+function add_cart_item(string $productId, int $quantity = 1, ?int $variationId = null, ?string $personalizationData = null): bool
 {
     $pdo = get_db_connection();
     $cartId = get_active_cart_id($pdo);
     
-    $sqlCheck = "SELECT id, quantity FROM cart_items WHERE cart_id = ? AND product_id = ?";
+    // Jei prekė personalizuota, visada kuriame naują įrašą (nedidiname kiekio), kad nesusimaišytų skirtingi užrašai
+    if ($personalizationData) {
+        $stmtIns = $pdo->prepare("INSERT INTO cart_items (cart_id, product_id, variation_id, quantity, personalization_data) VALUES (?, ?, ?, ?, ?)");
+        return $stmtIns->execute([$cartId, $productId, $variationId, $quantity, $personalizationData]);
+    }
+    
+    // Standartinė logika nepersonalizuotoms prekėms
+    $sqlCheck = "SELECT id, quantity FROM cart_items WHERE cart_id = ? AND product_id = ? AND personalization_data IS NULL";
     $params = [$cartId, $productId];
     
     if ($variationId) {
@@ -253,12 +268,17 @@ function create_order_from_cart(array $guestInfo = []): ?int
 {
     $pdo = get_db_connection();
     $cartId = get_active_cart_id($pdo);
-    $items = cart_items();
+    
+    // Gauname raw items, kad turėtume personalization_data
+    $rawItemsStmt = $pdo->prepare("SELECT * FROM cart_items WHERE cart_id = ?");
+    $rawItemsStmt->execute([$cartId]);
+    $items = $rawItemsStmt->fetchAll();
 
     if (empty($items)) {
         return null;
     }
-
+    
+    // Paskaičiuojam sumą (šiek tiek dubliuojasi su cart_total, bet saugiau)
     $totalPrice = cart_total();
     $userId = $_SESSION['user_id'] ?? null;
 
@@ -279,22 +299,37 @@ function create_order_from_cart(array $guestInfo = []): ?int
         $orderId = (int)$pdo->lastInsertId();
 
         $stmtItem = $pdo->prepare("
-            INSERT INTO order_items (order_id, product_id, product_name, variation_info, quantity, price)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO order_items (order_id, product_id, product_name, variation_info, personalization_data, quantity, price)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         ");
 
         foreach ($items as $item) {
+             // Gauname papildomą info apie produktą
+             $pStmt = $pdo->prepare("SELECT title, price, discount_price FROM products WHERE id = ?");
+             $pStmt->execute([$item['product_id']]);
+             $prod = $pStmt->fetch();
+             $price = $prod['discount_price'] ?: $prod['price'];
+
+             $varText = null;
+             if ($item['variation_id']) {
+                 $vStmt = $pdo->prepare("SELECT vv.value, va.name FROM variation_values vv JOIN variation_attributes va ON vv.variation_attribute_id = va.id WHERE vv.id = ?");
+                 $vStmt->execute([$item['variation_id']]);
+                 $vData = $vStmt->fetch();
+                 if ($vData) $varText = "{$vData['name']}: {$vData['value']}";
+             }
+
             $stmtItem->execute([
                 $orderId,
-                $item['id'],
-                $item['name'],
-                $item['variation_text'],
-                $item['qty'],
-                $item['price']
+                $item['product_id'],
+                $prod['title'],
+                $varText,
+                $item['personalization_data'],
+                $item['quantity'],
+                $price
             ]);
             
             $stmtStock = $pdo->prepare("UPDATE products SET stock = GREATEST(0, stock - ?) WHERE id = ?");
-            $stmtStock->execute([$item['qty'], $item['id']]);
+            $stmtStock->execute([$item['quantity'], $item['product_id']]);
         }
 
         $pdo->prepare("DELETE FROM cart_items WHERE cart_id = ?")->execute([$cartId]);
