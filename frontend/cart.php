@@ -1,18 +1,95 @@
 <?php
-// cart.php - MySQL paremtas krepšelis
+// cart.php - MySQL paremtas krepšelis ir katalogo funkcijos
 
 declare(strict_types=1);
 
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/db.php';
 
-// Ši funkcija reikalinga suderinamumui su nav.php
+// --- Pagalbinė funkcija suderinamumui (kad nemestų klaidų kituose failuose) ---
 function ensure_cart_initialized(): void
 {
     ensure_session();
 }
 
-// --- Pagalbinė funkcija gauti aktyviam krepšeliui ---
+// --- Katalogo atvaizdavimo funkcijos (NAUDOJA PARDUOTUVE.PHP) ---
+
+function format_product_categories(?string $raw): array
+{
+    if (!$raw) {
+        return [];
+    }
+    $parts = array_filter(array_map('trim', explode('|', $raw)));
+    $names = [];
+    foreach ($parts as $part) {
+        $segments = explode(':', $part, 2);
+        if (count($segments) === 2 && $segments[1] !== '') {
+            $names[] = $segments[1];
+        }
+    }
+    return $names;
+}
+
+function cart_catalog(): array
+{
+    static $cachedCatalog = null;
+
+    if ($cachedCatalog !== null) {
+        return $cachedCatalog;
+    }
+
+    $pdo = get_db_connection();
+
+    // Gauname produktus su viena pagrindine nuotrauka
+    $sql = "SELECT p.id, p.title, p.price, p.discount_price, p.stock, p.ribbon, p.tags, p.summary, p.subtitle,
+                   (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC LIMIT 1) as image_url,
+                   GROUP_CONCAT(DISTINCT CONCAT(c.id, ':', c.name) ORDER BY c.name SEPARATOR '|') AS categories
+            FROM products p
+            LEFT JOIN product_categories pc ON pc.product_id = p.id
+            LEFT JOIN categories c ON pc.category_id = c.id
+            GROUP BY p.id
+            ORDER BY p.id DESC"; // Rikiuojame pagal ID, kad būtų stabilu
+
+    $stmt = $pdo->query($sql);
+    $products = $stmt ? $stmt->fetchAll() : [];
+    $catalog = [];
+
+    foreach ($products as $product) {
+        if (!isset($product['id'], $product['title'], $product['price'])) {
+            continue;
+        }
+
+        $categories = format_product_categories($product['categories'] ?? '');
+        $tag = trim((string) ($product['ribbon'] ?? ''));
+
+        if (!$tag && !empty($product['tags'])) {
+            $tagParts = array_filter(array_map('trim', explode(',', (string) $product['tags'])));
+            $tag = $tagParts[0] ?? '';
+        }
+
+        $discount = $product['discount_price'] ?? null;
+        $finalPrice = $discount !== null && $discount !== '' ? (float) $discount : (float) $product['price'];
+
+        $catalog[] = [
+            'id' => (string) $product['id'],
+            'name' => (string) $product['title'],
+            'image_url' => $product['image_url'] ?? null,
+            'price' => $finalPrice,
+            'full_price' => (float) $product['price'],
+            'discount_price' => $discount !== null && $discount !== '' ? (float) $discount : null,
+            'category' => $categories[0] ?? 'Kategorija',
+            'tag' => $tag ?: 'Nauja',
+            'summary' => (string) ($product['summary'] ?? ($product['subtitle'] ?? '')),
+            'stock' => isset($product['stock']) ? (int) $product['stock'] : null,
+        ];
+    }
+
+    $cachedCatalog = $catalog;
+    return $cachedCatalog;
+}
+
+// --- Krepšelio funkcijos (MySQL) ---
+
 function get_active_cart_id(PDO $pdo): int
 {
     ensure_session();
@@ -40,14 +117,12 @@ function get_active_cart_id(PDO $pdo): int
     return (int)$cartId;
 }
 
-// --- Krepšelio funkcijos ---
-
 function cart_items(): array
 {
     $pdo = get_db_connection();
     $cartId = get_active_cart_id($pdo);
 
-    // PAKEITIMAS: Pakeista ORDER BY į ci.id DESC, kad nereikalautų created_at stulpelio
+    // SVARBU: Rikiuojame pagal ci.id DESC, nes created_at stulpelio gali nebūti senesnėse versijose
     $sql = "
         SELECT ci.id as item_id, ci.quantity, ci.variation_id,
                p.id as product_id, p.title as name, p.price, p.discount_price, p.stock,
@@ -76,6 +151,7 @@ function cart_items(): array
             'qty' => (int)$row['quantity'],
             'variation_id' => $row['variation_id'],
             'variation_text' => $row['variation_name'] ? "{$row['attribute_name']}: {$row['variation_name']}" : null,
+            'category' => 'Prekė', // Placeholder, jei reikia krepšelio atvaizdavimui
             'stock' => (int)$row['stock']
         ];
     }
@@ -88,7 +164,7 @@ function add_cart_item(string $productId, int $quantity = 1, ?int $variationId =
     $pdo = get_db_connection();
     $cartId = get_active_cart_id($pdo);
     
-    // Patikriname, ar tokia prekė (su tokia variacija) jau yra krepšelyje
+    // Patikriname, ar tokia prekė jau yra
     $sqlCheck = "SELECT id, quantity FROM cart_items WHERE cart_id = ? AND product_id = ?";
     $params = [$cartId, $productId];
     
@@ -104,12 +180,10 @@ function add_cart_item(string $productId, int $quantity = 1, ?int $variationId =
     $existing = $stmt->fetch();
 
     if ($existing) {
-        // Atnaujiname kiekį
         $newQty = $existing['quantity'] + $quantity;
         $stmtUpd = $pdo->prepare("UPDATE cart_items SET quantity = ? WHERE id = ?");
         return $stmtUpd->execute([$newQty, $existing['id']]);
     } else {
-        // Įterpiame naują
         $stmtIns = $pdo->prepare("INSERT INTO cart_items (cart_id, product_id, variation_id, quantity) VALUES (?, ?, ?, ?)");
         return $stmtIns->execute([$cartId, $productId, $variationId, $quantity]);
     }
