@@ -137,8 +137,8 @@ if (($user['role'] ?? 'customer') !== 'admin') {
               </div>
             </div>
             <div class="collapsible__body">
-              <div class="form-panels">
-                <form id="product-form" class="panel panel--form">
+              <form id="product-form" class="panel panel--form">
+                <div id="form-messages" class="stack"></div>
                   <div class="collapsible form-section is-open">
                     <div class="form-section__header collapsible__header">
                       <div>
@@ -201,10 +201,6 @@ if (($user['role'] ?? 'customer') !== 'admin') {
                             <option value="0">Ne</option>
                             <option value="1">Taip</option>
                           </select>
-                        </label>
-                        <label class="form-field">
-                          <span>API Bearer žetonas</span>
-                          <input type="text" name="token" id="form-token" placeholder="Įveskite jei siunčiate į API" />
                         </label>
                       </div>
                     </div>
@@ -301,20 +297,7 @@ if (($user['role'] ?? 'customer') !== 'admin') {
                   <div class="form-actions">
                     <button class="btn btn--primary" type="submit">Išsaugoti produktą</button>
                   </div>
-                </form>
-
-                <aside class="panel panel--preview">
-                  <div class="form-section__header">
-                    <div>
-                      <p class="card__eyebrow">Peržiūra</p>
-                      <h4>Paruošta siuntimui</h4>
-                    </div>
-                  </div>
-                  <div id="product-preview" class="stack" aria-live="polite">
-                    <p class="muted">Užpildykite formą kairėje, kad pamatytumėte suformuotą objekto santrauką.</p>
-                  </div>
-                </aside>
-              </div>
+              </form>
             </div>
           </div>
         </div>
@@ -361,15 +344,10 @@ if (($user['role'] ?? 'customer') !== 'admin') {
       imageList: document.getElementById('image-list'),
       relatedResults: document.getElementById('related-results'),
       relatedSelected: document.getElementById('related-selected'),
-      preview: document.getElementById('product-preview'),
+      messages: document.getElementById('form-messages'),
       form: document.getElementById('product-form'),
-      formTitle: document.getElementById('form-title'),
-      formToken: document.getElementById('form-token')
+      formTitle: document.getElementById('form-title')
     };
-
-    function getToken() {
-      return (elements.formToken.value || '').trim();
-    }
 
     function setupCollapsibles() {
       document.querySelectorAll('.collapsible').forEach((section) => {
@@ -395,11 +373,19 @@ if (($user['role'] ?? 'customer') !== 'admin') {
     }
 
     async function fetchJson(path, options = {}) {
-      const response = await fetch(`${apiBaseUrl}${path}`, options);
+      const response = await fetch(`${apiBaseUrl}${path}`, { credentials: 'include', ...options });
       if (!response.ok) {
         throw new Error(`Klaida ${response.status}`);
       }
       return response.json();
+    }
+
+    function pushMessage(text, tone = 'info') {
+      if (!elements.messages) return;
+      const note = document.createElement('div');
+      note.className = `alert alert--${tone}`;
+      note.textContent = text;
+      elements.messages.prepend(note);
     }
 
     function renderTabs() {
@@ -592,38 +578,6 @@ if (($user['role'] ?? 'customer') !== 'admin') {
       });
     }
 
-    function updatePreview(payload) {
-      elements.preview.innerHTML = '';
-      const meta = document.createElement('div');
-      meta.className = 'stack';
-      meta.innerHTML = `
-        <p class="muted">Slug: <strong>${payload.slug || 'nenurodytas'}</strong></p>
-        <p class="muted">Kaina: <strong>${payload.price || 0} €</strong> · Nuolaida: <strong>${
-        payload.discount_price || '–'
-      }</strong></p>
-        <p class="muted">Likutis: <strong>${payload.stock ?? 0} vnt.</strong> · Svoris: <strong>${
-        payload.weight_kg || '–'
-      } kg</strong></p>
-        <p class="muted">Personalizacija: <strong>${payload.allow_personalization ? 'Taip' : 'Ne'}</strong></p>
-      `;
-
-      const lists = document.createElement('div');
-      lists.className = 'stack';
-      lists.innerHTML = `
-        <p class="muted">Kategorijos: ${payload.categories.join(', ') || 'nepasirinkta'}</p>
-        <p class="muted">Subkategorijos: ${payload.subcategories.join(', ') || 'nepasirinkta'}</p>
-        <p class="muted">Variacijos: ${payload.variation_value_ids.length || 0} pasirinkimai</p>
-        <p class="muted">Susiję produktai: ${payload.related_product_ids.length || 0} įrašai</p>
-        <p class="muted">Nuotraukos: ${payload.images.length || 0} vnt.</p>
-      `;
-
-      const json = document.createElement('pre');
-      json.className = 'code';
-      json.textContent = JSON.stringify(payload, null, 2);
-
-      elements.preview.append(meta, lists, json);
-    }
-
     async function loadCollections() {
       try {
         const [products, categories, variations] = await Promise.all([
@@ -688,18 +642,13 @@ if (($user['role'] ?? 'customer') !== 'admin') {
     }
 
     async function upsertCategory(formData, isSubcategory = false) {
-      const token = getToken();
-      if (!token) {
-        alert('Įveskite Bearer žetoną produkto formoje.');
-        return;
-      }
       const payload = Object.fromEntries(formData.entries());
       const endpoint = isSubcategory
         ? `/categories/${payload.parent_category}/subcategories`
         : '/categories';
       await fetchJson(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(
           isSubcategory
             ? { name: payload.subcategory_name, slug: payload.subcategory_slug }
@@ -715,20 +664,18 @@ if (($user['role'] ?? 'customer') !== 'admin') {
       const name = prompt('Naujas pavadinimas', target.name);
       const slug = prompt('Naujas slug', target.slug);
       if (!name || !slug) return;
-      const token = getToken();
       await fetchJson(`/categories/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, slug })
       });
       await loadCollections();
     }
 
     async function deleteCategory(id) {
-      const token = getToken();
       await fetchJson(`/categories/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        headers: {}
       });
       await loadCollections();
     }
@@ -740,31 +687,24 @@ if (($user['role'] ?? 'customer') !== 'admin') {
       const name = prompt('Naujas subkategorijos pavadinimas', target.name);
       const slug = prompt('Naujas slug', target.slug);
       if (!name || !slug) return;
-      const token = getToken();
       await fetchJson(`/categories/${catId}/subcategories/${subId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, slug })
       });
       await loadCollections();
     }
 
     async function deleteSubcategory(catId, subId) {
-      const token = getToken();
       await fetchJson(`/categories/${catId}/subcategories/${subId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        headers: {}
       });
       await loadCollections();
     }
 
     async function uploadFiles(files) {
       if (!files.length) return;
-      const token = getToken();
-      if (!token) {
-        alert('Įveskite Bearer žetoną, kad įkeltumėte nuotraukas.');
-        return;
-      }
 
       for (const file of files) {
         const reader = new FileReader();
@@ -772,7 +712,7 @@ if (($user['role'] ?? 'customer') !== 'admin') {
           try {
             const response = await fetchJson('/upload', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ fileName: file.name, dataUrl: ev.target.result })
             });
             state.images.push({ image_url: response.url, is_primary: !state.images.length });
@@ -805,16 +745,6 @@ if (($user['role'] ?? 'customer') !== 'admin') {
         related_product_ids: Array.from(state.relatedIds),
         images: state.images.map((img, index) => ({ image_url: img.image_url, is_primary: img.is_primary || index === 0 }))
       };
-
-      updatePreview({
-        ...payload,
-        categories: Array.from(state.categoryIds).map((id) => state.categories.find((c) => c.id === id)?.name || ''),
-        subcategories: Array.from(state.subcategoryIds).map(
-          (id) => state.categories.flatMap((c) => c.subcategories || []).find((s) => s.id === id)?.name || ''
-        ),
-        images: payload.images
-      });
-
       return payload;
     }
 
@@ -862,10 +792,9 @@ if (($user['role'] ?? 'customer') !== 'admin') {
       const value = document.getElementById('new-variation-value').value.trim();
       const attributeId = Number(elements.variationSelect.value);
       if (!value || !attributeId) return;
-      const token = getToken();
       await fetchJson(`/variations/attributes/${attributeId}/values`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ value })
       });
       document.getElementById('new-variation-value').value = '';
@@ -939,33 +868,24 @@ if (($user['role'] ?? 'customer') !== 'admin') {
       const formData = new FormData(event.target);
       const payload = buildPayload(formData);
 
-      const token = getToken();
-      if (!token) return;
-
       try {
         const endpoint = editingProductId ? `/products/${editingProductId}` : '/products';
         const method = editingProductId ? 'PUT' : 'POST';
         const response = await fetchJson(endpoint, {
           method,
           headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify(payload)
         });
 
-        const note = document.createElement('div');
-        note.className = 'alert alert--success';
-        note.textContent = editingProductId
-          ? 'Produktas atnaujintas'
-          : `Sukurta. Naujo produkto ID: ${response.id}`;
-        elements.preview.prepend(note);
+        pushMessage(
+          editingProductId ? 'Produktas atnaujintas' : `Sukurta. Naujo produkto ID: ${response.id}`,
+          'success'
+        );
         await loadCollections();
       } catch (error) {
-        const note = document.createElement('div');
-        note.className = 'alert alert--error';
-        note.textContent = 'Nepavyko išsaugoti produkto';
-        elements.preview.prepend(note);
+        pushMessage('Nepavyko išsaugoti produkto', 'error');
       }
     });
 
