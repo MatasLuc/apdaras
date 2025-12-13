@@ -65,7 +65,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (!$errorMsg) {
-        // Jei nėra teksto, nesiunčiam personalizacijos duomenų
         if ($persDataRaw) {
             $decoded = json_decode($persDataRaw, true);
             if (empty($decoded['text'])) {
@@ -101,6 +100,7 @@ unset($_SESSION['cart_alert']);
   <link rel="stylesheet" href="./assets/styles.css" />
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700&family=Playfair+Display:wght@700&family=Montserrat:wght@900&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
   <?php include __DIR__ . '/partials/nav.php'; ?>
@@ -145,8 +145,9 @@ unset($_SESSION['cart_alert']);
                             </div>
                         </div>
                     </div>
-                    <div id="loadingOverlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); z-index:10; justify-content:center; align-items:center;">
-                        <span class="strong">Ruošiamas dizainas...</span>
+                    <div id="loadingOverlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); z-index:10; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
+                        <span class="strong" style="font-size:18px;">Ruošiamas užsakymas...</span>
+                        <span class="muted" style="font-size:14px; margin-top:4px;">Generuojamas spaudos failas ir peržiūra</span>
                     </div>
                 </div>
 
@@ -210,7 +211,6 @@ unset($_SESSION['cart_alert']);
         </form>
 
         <script>
-            // --- INTERAKTYVUS REDAKTORIUS ---
             const textInput = document.getElementById('TextInput');
             const transformBox = document.getElementById('transformBox');
             const textElement = document.getElementById('textElement');
@@ -218,13 +218,13 @@ unset($_SESSION['cart_alert']);
             const colorPicker = document.getElementById('ColorPicker');
             const persInput = document.getElementById('personalizationInput');
             const canvasWrap = document.getElementById('canvasWrap');
+            const editorBg = document.getElementById('editorBg');
 
-            // Būsena
             let state = {
                 text: '',
                 color: '#000000',
                 fontFamily: "'Roboto', sans-serif",
-                x: 50, // Procentais
+                x: 50,
                 y: 50,
                 scale: 1,
                 rotation: 0
@@ -233,18 +233,13 @@ unset($_SESSION['cart_alert']);
             function updateView() {
                 textElement.innerText = state.text;
                 transformBox.style.display = state.text ? 'block' : 'none';
-                
                 textElement.style.color = state.color;
                 textElement.style.fontFamily = state.fontFamily;
-                
-                // Pozicija ir Transformacijos
                 transformBox.style.left = state.x + '%';
                 transformBox.style.top = state.y + '%';
-                // scale() keičia dydį vizualiai
                 transformBox.style.transform = `translate(-50%, -50%) rotate(${state.rotation}deg) scale(${state.scale})`;
             }
 
-            // Pagrindiniai nustatymai
             textInput.addEventListener('input', (e) => { state.text = e.target.value; updateView(); });
             fontSelect.addEventListener('change', (e) => { state.fontFamily = e.target.value; updateView(); });
 
@@ -258,30 +253,20 @@ unset($_SESSION['cart_alert']);
             });
 
             window.setEditorImage = function(src, el) {
-                document.getElementById('editorBg').src = src;
+                editorBg.src = src;
                 document.querySelectorAll('.editor-thumb').forEach(t => t.classList.remove('is-active'));
                 el.classList.add('is-active');
             }
 
-            // --- DRAG, ROTATE, SCALE LOGIKA ---
-            let isDragging = false;
-            let isRotating = false;
-            let isResizing = false;
-            let startX, startY;
-            let startAngle = 0;
-            let startScale = 1;
+            // GIZMO LOGIKA (Drag, Rotate, Resize)
+            let isDragging = false, isRotating = false, isResizing = false;
+            let startAngle = 0, startScale = 1;
 
-            // Helper: Mouse pozicija konteineryje
             function getMousePos(e) {
                 const rect = canvasWrap.getBoundingClientRect();
-                return {
-                    x: e.clientX - rect.left,
-                    y: e.clientY - rect.top,
-                    rect
-                };
+                return { x: e.clientX - rect.left, y: e.clientY - rect.top, rect };
             }
 
-            // 1. Dragging (Judinimas)
             transformBox.addEventListener('mousedown', (e) => {
                 if(e.target.classList.contains('rotate-handle') || e.target.classList.contains('resize-handle')) return;
                 isDragging = true;
@@ -289,115 +274,111 @@ unset($_SESSION['cart_alert']);
                 e.preventDefault();
             });
 
-            // 2. Rotating (Sukimas)
             document.getElementById('rotateHandle').addEventListener('mousedown', (e) => {
                 isRotating = true;
                 const boxRect = transformBox.getBoundingClientRect();
                 const centerX = boxRect.left + boxRect.width / 2;
                 const centerY = boxRect.top + boxRect.height / 2;
-                // Kampas pelės paspaudimo metu
                 startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) - (state.rotation * Math.PI / 180);
-                e.stopPropagation();
-                e.preventDefault();
+                e.stopPropagation(); e.preventDefault();
             });
 
-            // 3. Resizing (Didinimas)
             document.getElementById('resizeHandle').addEventListener('mousedown', (e) => {
                 isResizing = true;
                 const rect = transformBox.getBoundingClientRect();
-                // Pradinis atstumas nuo centro
                 const centerX = rect.left + rect.width / 2;
                 const centerY = rect.top + rect.height / 2;
                 const dist = Math.hypot(e.clientX - centerX, e.clientY - centerY);
-                startScale = state.scale / dist; // Išsaugom santykį
-                e.stopPropagation();
-                e.preventDefault();
+                startScale = state.scale / dist;
+                e.stopPropagation(); e.preventDefault();
             });
 
-            // Global Mouse Move
             document.addEventListener('mousemove', (e) => {
                 if (!isDragging && !isRotating && !isResizing) return;
-                
                 const pos = getMousePos(e);
 
                 if (isDragging) {
                     state.x = (pos.x / pos.rect.width) * 100;
                     state.y = (pos.y / pos.rect.height) * 100;
-                } 
-                else if (isRotating) {
+                } else if (isRotating) {
                     const boxRect = transformBox.getBoundingClientRect();
                     const centerX = boxRect.left + boxRect.width / 2;
                     const centerY = boxRect.top + boxRect.height / 2;
-                    const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
-                    state.rotation = (angle - startAngle) * (180 / Math.PI);
-                }
-                else if (isResizing) {
+                    state.rotation = (Math.atan2(e.clientY - centerY, e.clientX - centerX) - startAngle) * (180 / Math.PI);
+                } else if (isResizing) {
                     const boxRect = transformBox.getBoundingClientRect();
                     const centerX = boxRect.left + boxRect.width / 2;
                     const centerY = boxRect.top + boxRect.height / 2;
                     const dist = Math.hypot(e.clientX - centerX, e.clientY - centerY);
-                    // Minimalus scale 0.2
                     state.scale = Math.max(0.2, dist * startScale);
                 }
-
                 updateView();
             });
 
             document.addEventListener('mouseup', () => {
-                isDragging = false;
-                isRotating = false;
-                isResizing = false;
+                isDragging = false; isRotating = false; isResizing = false;
             });
 
-            // --- FORMA IR SNAPSHOT ---
+            // --- SUBMIT LOGIKA (PDF ir PNG) ---
             const form = document.getElementById('productForm');
             const loadingOverlay = document.getElementById('loadingOverlay');
 
-            form.addEventListener('submit', async (e) => {
-                // Jei nėra teksto, tiesiog siunčiam
-                if (!state.text) {
-                    persInput.value = '';
-                    return;
-                }
-                
-                e.preventDefault(); // Sustabdom standartinį siuntimą
-                loadingOverlay.style.display = 'flex';
+            async function uploadDataUrl(filename, dataUrl) {
+                const res = await fetch('api/upload.php', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ fileName: filename, dataUrl: dataUrl })
+                });
+                if(!res.ok) throw new Error('Upload failed');
+                const data = await res.json();
+                return data.url;
+            }
 
-                // Nuimame selekcijos rėmelius prieš fotkinant
+            form.addEventListener('submit', async (e) => {
+                if (!state.text) { persInput.value = ''; return; }
+                
+                e.preventDefault();
+                loadingOverlay.style.display = 'flex';
                 transformBox.classList.remove('is-selected');
 
                 try {
-                    // 1. Generuojame paveikslėlį
-                    const canvas = await html2canvas(canvasWrap, {
-                        useCORS: true, // Svarbu jei paveikslėliai iš kito domeno
-                        scale: 2 // Geresnė kokybė
+                    const { jsPDF } = window.jspdf;
+
+                    // 1. Sugeneruojame SPAUDOS FAILĄ (be fono, tik tekstas, aukšta kokybė)
+                    editorBg.style.visibility = 'hidden'; // Paslepiam foną
+                    const printCanvas = await html2canvas(canvasWrap, {
+                        useCORS: true,
+                        scale: 4, // 4x kokybė spaudai
+                        backgroundColor: null // Skaidrus fonas
                     });
                     
-                    const dataUrl = canvas.toDataURL('image/png');
+                    // Kuriame PDF
+                    const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [printCanvas.width, printCanvas.height] });
+                    pdf.addImage(printCanvas.toDataURL('image/png'), 'PNG', 0, 0, printCanvas.width, printCanvas.height);
+                    const pdfData = pdf.output('datauristring');
+                    
+                    // Įkeliame PDF
+                    const pdfUrl = await uploadDataUrl('print-file.pdf', pdfData);
+                    state.printPdfUrl = pdfUrl;
 
-                    // 2. Siunčiame į serverį
-                    const uploadRes = await fetch('api/upload.php', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({
-                            fileName: 'design-snapshot.png',
-                            dataUrl: dataUrl
-                        })
+                    // 2. Sugeneruojame PERŽIŪROS FAILĄ (su fonu)
+                    editorBg.style.visibility = 'visible'; // Grąžinam foną
+                    const previewCanvas = await html2canvas(canvasWrap, {
+                        useCORS: true,
+                        scale: 1 // Standartinė kokybė ekranui
                     });
+                    const previewUrl = await uploadDataUrl('preview-snapshot.png', previewCanvas.toDataURL('image/png'));
+                    state.snapshotUrl = previewUrl;
 
-                    if (!uploadRes.ok) throw new Error('Nepavyko išsaugoti dizaino');
-                    const uploadData = await uploadRes.json();
-
-                    // 3. Išsaugome viską į hidden input
-                    state.snapshotUrl = uploadData.url;
+                    // 3. Išsaugome ir siunčiame
                     persInput.value = JSON.stringify(state);
-
-                    // 4. Pateikiame formą
                     form.submit();
 
                 } catch (err) {
-                    alert('Klaida kuriant dizainą: ' + err.message);
+                    console.error(err);
+                    alert('Klaida kuriant dizainą. Bandykite dar kartą.');
                     loadingOverlay.style.display = 'none';
+                    editorBg.style.visibility = 'visible';
                     transformBox.classList.add('is-selected');
                 }
             });
@@ -439,43 +420,30 @@ unset($_SESSION['cart_alert']);
             </div>
 
             <div class="add-to-cart-box">
-               <div style="display: flex; justify-content: space-between; align-items: center;">
-                 <span class="strong">Likutis:</span>
-                 <span class="<?php echo $product['stock'] > 0 ? 'text-success' : 'text-danger'; ?>">
-                    <?php echo $product['stock'] > 0 ? $product['stock'] . ' vnt.' : 'Išparduota'; ?>
-                 </span>
-               </div>
-               
-               <?php if ($product['stock'] > 0): ?>
-                 <form method="post" class="stack">
-                    <input type="hidden" name="product_id" value="<?php echo $product['id']; ?>">
-                    
-                    <?php if ($groupedVariations): ?>
-                        <?php foreach ($groupedVariations as $attrName => $values): ?>
-                            <div>
-                                <p class="card__eyebrow" style="margin-bottom: 8px;"><?php echo htmlspecialchars($attrName); ?></p>
-                                <div class="variation-select">
-                                    <?php foreach ($values as $val): ?>
-                                        <label>
-                                            <input type="radio" name="variation_id" value="<?php echo $val['id']; ?>" class="variation-radio">
-                                            <span class="variation-label"><?php echo htmlspecialchars($val['value']); ?></span>
-                                        </label>
-                                    <?php endforeach; ?>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-
-                    <div class="form__field" style="margin-top: 12px;">
-                        <div style="display: flex; gap: 10px;">
-                            <input type="number" name="qty" value="1" min="1" max="20" style="width: 80px;">
-                            <button type="submit" class="btn btn--primary btn--block">Į krepšelį</button>
-                        </div>
-                    </div>
-                 </form>
-               <?php else: ?>
-                 <button disabled class="btn btn--ghost btn--block">Laikinai nėra</button>
-               <?php endif; ?>
+               <form method="post" class="stack">
+                  <input type="hidden" name="product_id" value="<?php echo $product['id']; ?>">
+                  <?php if ($groupedVariations): ?>
+                      <?php foreach ($groupedVariations as $attrName => $values): ?>
+                          <div>
+                              <p class="card__eyebrow" style="margin-bottom: 8px;"><?php echo htmlspecialchars($attrName); ?></p>
+                              <div class="variation-select">
+                                  <?php foreach ($values as $val): ?>
+                                      <label>
+                                          <input type="radio" name="variation_id" value="<?php echo $val['id']; ?>" class="variation-radio">
+                                          <span class="variation-label"><?php echo htmlspecialchars($val['value']); ?></span>
+                                      </label>
+                                  <?php endforeach; ?>
+                              </div>
+                          </div>
+                      <?php endforeach; ?>
+                  <?php endif; ?>
+                  <div class="form__field" style="margin-top: 12px;">
+                      <div style="display: flex; gap: 10px;">
+                          <input type="number" name="qty" value="1" min="1" max="20" style="width: 80px;">
+                          <button type="submit" class="btn btn--primary btn--block">Į krepšelį</button>
+                      </div>
+                  </div>
+               </form>
             </div>
             
             <div class="product-description">
