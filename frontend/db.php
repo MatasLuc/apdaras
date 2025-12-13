@@ -1,5 +1,5 @@
 <?php
-// db.php - Prisijungimas ir automatinis lentelių kūrimas
+// db.php - Database connection and automatic table creation
 
 declare(strict_types=1);
 
@@ -252,15 +252,24 @@ function ensure_all_tables(PDO $pdo): void
         }
     }
 
-    // Papildomas žingsnis seniems duomenims: Užtikriname, kad 'users' lentelė turi visus stulpelius
+    // --- SVARBU: Atnaujiname senas lenteles (ALTER TABLE) ---
     try {
+        // Users
         $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS role ENUM('customer', 'admin') DEFAULT 'customer'");
         $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image VARCHAR(255) DEFAULT NULL");
         $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS birthdate DATE DEFAULT NULL");
         $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT DEFAULT NULL");
         $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS gender ENUM('male', 'female', 'unspecified') DEFAULT 'unspecified'");
+        
+        // Cart Items (Jūsų klaidos sprendimas)
+        $pdo->exec("ALTER TABLE cart_items ADD COLUMN IF NOT EXISTS variation_id INT DEFAULT NULL");
+        
+        // Order Items (Prevencija)
+        $pdo->exec("ALTER TABLE order_items ADD COLUMN IF NOT EXISTS variation_info VARCHAR(255) DEFAULT NULL");
+        
     } catch (PDOException $e) {
-        // Ignoruojame, jei stulpeliai jau yra
+        // Ignoruojame klaidas, jei stulpeliai jau yra, arba duomenų bazė nepalaiko 'IF NOT EXISTS' sintaksės ALTER komandoje
+        // (MariaDB 10.2+ ir MySQL 8.0+ palaiko)
     }
 }
 
