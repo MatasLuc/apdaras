@@ -62,10 +62,10 @@ if (($user['role'] ?? 'customer') !== 'admin') {
             <aside class="admin-sidebar">
               <div class="admin-sidebar__title">Parduotuvės nustatymai</div>
               <nav class="admin-nav">
-                <a class="admin-nav__item is-active" href="#catalog-summary">Produktai</a>
-                <a class="admin-nav__item" href="#category-management">Kategorijos</a>
-                <a class="admin-nav__item" href="#variation-management">Variacijos</a>
-                <a class="admin-nav__item" href="#product-editor">Nauja prekė</a>
+                <button class="admin-nav__item is-active" type="button" data-target="catalog-summary">Produktai</button>
+                <button class="admin-nav__item" type="button" data-target="category-management">Kategorijos</button>
+                <button class="admin-nav__item" type="button" data-target="variation-management">Variacijos</button>
+                <button class="admin-nav__item" type="button" data-target="product-editor">Nauja prekė</button>
               </nav>
               <div class="admin-note">
                 <p class="card__eyebrow">Patarimas</p>
@@ -83,7 +83,7 @@ if (($user['role'] ?? 'customer') !== 'admin') {
                 <div class="pill pill--success">Aktyvus</div>
               </div>
 
-              <div class="card card--surface admin-card" id="catalog-summary">
+              <div class="card card--surface admin-card" id="catalog-summary" data-admin-section>
                 <div class="card__header">
                   <div>
                     <p class="card__eyebrow">Katalogas</p>
@@ -104,7 +104,7 @@ if (($user['role'] ?? 'customer') !== 'admin') {
                 </div>
               </div>
 
-              <div class="card card--surface admin-card" id="category-management">
+              <div class="card card--surface admin-card" id="category-management" data-admin-section>
                 <div class="card__header">
                   <div>
                     <p class="card__eyebrow">Kategorijų valdymas</p>
@@ -112,28 +112,28 @@ if (($user['role'] ?? 'customer') !== 'admin') {
                   </div>
                 </div>
                 <div class="stack stack--spacious">
-                  <form id="category-form" class="form-grid">
-                    <label class="form-field">
+                  <form id="category-form" class="stack stack--spacious">
+                    <label class="form__field">
                       <span>Kategorijos pavadinimas</span>
                       <input type="text" name="category_name" placeholder="Pvz., Aksesuarai" required />
                     </label>
-                    <label class="form-field">
+                    <label class="form__field">
                       <span>Slug</span>
                       <input type="text" name="category_slug" placeholder="aksesuarai" required />
                     </label>
                     <button class="btn btn--primary" type="submit">Pridėti kategoriją</button>
                   </form>
 
-                  <form id="subcategory-form" class="form-grid">
-                    <label class="form-field">
+                  <form id="subcategory-form" class="stack stack--spacious">
+                    <label class="form__field">
                       <span>Pagrindinė kategorija</span>
                       <select name="parent_category" id="subcategory-parent" required></select>
                     </label>
-                    <label class="form-field">
+                    <label class="form__field">
                       <span>Subkategorijos pavadinimas</span>
                       <input type="text" name="subcategory_name" placeholder="Oversize" required />
                     </label>
-                    <label class="form-field">
+                    <label class="form__field">
                       <span>Slug</span>
                       <input type="text" name="subcategory_slug" placeholder="oversize" required />
                     </label>
@@ -144,7 +144,7 @@ if (($user['role'] ?? 'customer') !== 'admin') {
                 </div>
               </div>
 
-              <div class="card card--surface admin-card" id="variation-management">
+              <div class="card card--surface admin-card" id="variation-management" data-admin-section>
                 <div class="card__header">
                   <div>
                     <p class="card__eyebrow">Variacijų valdymas</p>
@@ -152,19 +152,19 @@ if (($user['role'] ?? 'customer') !== 'admin') {
                   </div>
                 </div>
                 <div class="stack stack--spacious">
-                  <form id="variation-attribute-form" class="form-grid">
-                    <label class="form-field form-field--wide">
+                  <form id="variation-attribute-form" class="stack stack--spacious">
+                    <label class="form__field">
                       <span>Naujas variacijos atributas</span>
                       <input type="text" id="variation-attribute-name" placeholder="Pvz., Spalva, Dydis" required />
                     </label>
                     <button class="btn btn--primary" type="submit">Pridėti atributą</button>
                   </form>
-                  <div class="form-grid form-grid--actions">
-                    <label class="form-field">
+                  <div class="stack stack--spacious">
+                    <label class="form__field">
                       <span>Nauja reikšmė</span>
                       <input type="text" id="new-variation-value" placeholder="Nauja variacijos reikšmė" />
                     </label>
-                    <label class="form-field">
+                    <label class="form__field">
                       <span>Pasirinkite atributą</span>
                       <select id="new-variation-attribute"></select>
                     </label>
@@ -176,7 +176,7 @@ if (($user['role'] ?? 'customer') !== 'admin') {
                 </div>
               </div>
 
-              <div class="card card--surface admin-card" id="product-editor">
+              <div class="card card--surface admin-card" id="product-editor" data-admin-section>
                 <div class="card__header">
                   <div>
                     <p class="card__eyebrow">Produktų forma</p>
@@ -209,29 +209,29 @@ if (($user['role'] ?? 'customer') !== 'admin') {
                         <h4>Turinys</h4>
                       </div>
                     </div>
-                    <div class="form-section__body">
-                      <div class="form-grid">
-                        <label class="form-field">
+                  <div class="form-section__body">
+                      <div class="stack stack--spacious">
+                        <label class="form__field">
                           <span>Pavadinimas</span>
                           <input type="text" name="title" required />
                         </label>
-                        <label class="form-field">
+                        <label class="form__field">
                           <span>Paantraštė</span>
                           <input type="text" name="subtitle" placeholder="Trumpa žinutė po pavadinimu" />
                         </label>
-                        <label class="form-field">
+                        <label class="form__field">
                           <span>Juostelė</span>
                           <input type="text" name="ribbon" placeholder="Pvz., Nauja, Top pasirinkimas" />
                         </label>
-                        <label class="form-field">
+                        <label class="form__field">
                           <span>Žymės</span>
                           <input type="text" name="tags" placeholder="Žymos, atskirtos kableliais" />
                         </label>
-                        <label class="form-field form-field--wide">
+                        <label class="form__field">
                           <span>Paantraštė (santrauka)</span>
                           <textarea name="summary" rows="2"></textarea>
                         </label>
-                        <label class="form-field form-field--wide">
+                        <label class="form__field">
                           <span>Aprašymas</span>
                           <textarea name="description" rows="4"></textarea>
                         </label>
@@ -246,25 +246,25 @@ if (($user['role'] ?? 'customer') !== 'admin') {
                         <h4>Kainodara ir atsargos</h4>
                       </div>
                     </div>
-                    <div class="form-section__body">
-                      <div class="form-grid">
-                        <label class="form-field">
+                  <div class="form-section__body">
+                      <div class="stack stack--spacious">
+                        <label class="form__field">
                           <span>Kaina (€)</span>
                           <input type="number" name="price" min="0" step="0.01" required />
                         </label>
-                        <label class="form-field">
+                        <label class="form__field">
                           <span>Kaina su nuolaida (€)</span>
                           <input type="number" name="discount_price" min="0" step="0.01" />
                         </label>
-                        <label class="form-field">
+                        <label class="form__field">
                           <span>Svoris (kg)</span>
                           <input type="number" name="weight_kg" min="0" step="0.001" />
                         </label>
-                        <label class="form-field">
+                        <label class="form__field">
                           <span>Likutis</span>
                           <input type="number" name="stock" min="0" step="1" value="0" />
                         </label>
-                        <label class="form-field">
+                        <label class="form__field">
                           <span>Galimybė personalizuoti</span>
                           <select name="allow_personalization">
                             <option value="0">Ne</option>
@@ -376,7 +376,8 @@ if (($user['role'] ?? 'customer') !== 'admin') {
   </main>
 
   <script>
-    const apiBaseUrl = "<?php echo getenv('API_BASE_URL') ?: 'http://localhost:4000'; ?>";
+    const apiBaseFromEnv = "<?php echo rtrim(getenv('API_BASE_URL') ?: '', '/'); ?>";
+    const apiBaseUrl = apiBaseFromEnv || window.location.origin;
     const params = new URLSearchParams(window.location.search);
     const editingProductId = params.get('productId');
     const adminRole = "<?php echo htmlspecialchars($user['role'] ?? '', ENT_QUOTES, 'UTF-8'); ?>";
@@ -407,7 +408,9 @@ if (($user['role'] ?? 'customer') !== 'admin') {
       relatedSelected: document.getElementById('related-selected'),
       messages: document.getElementById('form-messages'),
       form: document.getElementById('product-form'),
-      formTitle: document.getElementById('form-title')
+      formTitle: document.getElementById('form-title'),
+      adminNav: document.querySelectorAll('.admin-nav__item'),
+      adminSections: document.querySelectorAll('[data-admin-section]')
     };
 
     function setupCollapsibles() {
@@ -458,6 +461,24 @@ if (($user['role'] ?? 'customer') !== 'admin') {
           elements.panels.forEach((panel) => panel.classList.toggle('is-active', panel.id === `tab-${target}`));
         });
       });
+    }
+
+    function showSection(targetId) {
+      elements.adminNav.forEach((item) => item.classList.toggle('is-active', item.dataset.target === targetId));
+      elements.adminSections.forEach((card) => {
+        card.classList.toggle('is-active', card.id === targetId);
+      });
+    }
+
+    function setupAdminNavigation() {
+      elements.adminNav.forEach((item) => {
+        item.addEventListener('click', () => {
+          showSection(item.dataset.target);
+        });
+      });
+
+      const defaultSection = editingProductId ? 'product-editor' : 'catalog-summary';
+      showSection(defaultSection);
     }
 
     function renderProductTable() {
@@ -684,6 +705,7 @@ if (($user['role'] ?? 'customer') !== 'admin') {
         renderRelated();
       } catch (error) {
         elements.productTable.insertAdjacentHTML('beforeend', `<div class="table__row"><span class="text-danger">${error.message}</span></div>`);
+        pushMessage('Nepavyko įkelti duomenų. Patikrinkite prisijungimą ir API nuorodą.', 'error');
       }
     }
 
@@ -723,16 +745,22 @@ if (($user['role'] ?? 'customer') !== 'admin') {
       const endpoint = isSubcategory
         ? `/categories/${payload.parent_category}/subcategories`
         : '/categories';
-      await fetchJson(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(
-          isSubcategory
-            ? { name: payload.subcategory_name, slug: payload.subcategory_slug }
-            : { name: payload.category_name, slug: payload.category_slug }
-        )
-      });
-      await loadCollections();
+
+      try {
+        await fetchJson(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(
+            isSubcategory
+              ? { name: payload.subcategory_name, slug: payload.subcategory_slug }
+              : { name: payload.category_name, slug: payload.category_slug }
+          )
+        });
+        await loadCollections();
+        pushMessage(isSubcategory ? 'Subkategorija pridėta' : 'Kategorija pridėta', 'success');
+      } catch (error) {
+        pushMessage('Nepavyko išsaugoti kategorijos', 'error');
+      }
     }
 
     async function editCategory(id) {
@@ -869,13 +897,18 @@ if (($user['role'] ?? 'customer') !== 'admin') {
       const value = document.getElementById('new-variation-value').value.trim();
       const attributeId = Number(elements.variationSelect.value);
       if (!value || !attributeId) return;
-      await fetchJson(`/variations/attributes/${attributeId}/values`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ value })
-      });
-      document.getElementById('new-variation-value').value = '';
-      await loadCollections();
+      try {
+        await fetchJson(`/variations/attributes/${attributeId}/values`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value })
+        });
+        document.getElementById('new-variation-value').value = '';
+        await loadCollections();
+        pushMessage('Variacijos reikšmė pridėta', 'success');
+      } catch (error) {
+        pushMessage('Nepavyko pridėti variacijos reikšmės', 'error');
+      }
     });
 
     document.getElementById('quick-ai').addEventListener('click', () => {
@@ -955,13 +988,18 @@ if (($user['role'] ?? 'customer') !== 'admin') {
       event.preventDefault();
       const name = document.getElementById('variation-attribute-name').value.trim();
       if (!name) return;
-      await fetchJson('/variations/attributes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name })
-      });
-      event.target.reset();
-      await loadCollections();
+      try {
+        await fetchJson('/variations/attributes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+        event.target.reset();
+        await loadCollections();
+        pushMessage('Variacijos atributas pridėtas', 'success');
+      } catch (error) {
+        pushMessage('Nepavyko pridėti variacijos atributo', 'error');
+      }
     });
 
     elements.form.addEventListener('submit', async (event) => {
@@ -992,11 +1030,12 @@ if (($user['role'] ?? 'customer') !== 'admin') {
 
     document.getElementById('refresh-data').addEventListener('click', loadCollections);
     document.getElementById('open-new-product').addEventListener('click', () => {
-      window.open('administravimas.php#product-editor', '_blank');
+      showSection('product-editor');
     });
 
     renderTabs();
     setupCollapsibles();
+    setupAdminNavigation();
     renderImages();
     loadCollections().then(() => {
       if (editingProductId) {
