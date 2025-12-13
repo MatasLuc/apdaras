@@ -3,6 +3,14 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+const DEFAULT_DB_CONFIG = {
+  DB_HOST: 'localhost',
+  DB_PORT: '3306',
+  DB_USER: 'root',
+  DB_PASSWORD: '',
+  DB_NAME: 'apdaras'
+};
+
 const TABLE_QUERIES = [
   `CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -139,25 +147,35 @@ const MIGRATIONS = [
 
 let pool;
 
-function ensureEnv() {
-  const required = ['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'];
-  const missing = required.filter((key) => !process.env[key]);
-  if (missing.length) {
-    throw new Error(`Trūksta aplinkos kintamųjų: ${missing.join(', ')}`);
-  }
+function resolveConfig() {
+  const config = { ...DEFAULT_DB_CONFIG };
+
+  Object.keys(DEFAULT_DB_CONFIG).forEach((key) => {
+    const value = process.env[key];
+    if (typeof value === 'string' && value !== '') {
+      config[key] = value;
+    }
+  });
+
+  return config;
 }
 
 export async function initDb() {
   if (pool) return pool;
-  ensureEnv();
-
-  const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME } = process.env;
-  const connection = await mysql.createConnection({
-    host: DB_HOST,
-    port: DB_PORT,
-    user: DB_USER,
-    password: DB_PASSWORD
-  });
+  const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME } = resolveConfig();
+  let connection;
+  try {
+    connection = await mysql.createConnection({
+      host: DB_HOST,
+      port: DB_PORT,
+      user: DB_USER,
+      password: DB_PASSWORD
+    });
+  } catch (err) {
+    throw new Error(
+      `Nepavyko prisijungti prie duomenų bazės (${DB_HOST}:${DB_PORT}) naudotoju ${DB_USER}: ${err.message}`
+    );
+  }
 
   await connection.query(
     `CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
