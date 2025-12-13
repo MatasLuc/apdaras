@@ -28,11 +28,16 @@ const TABLE_QUERIES = [
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     slug VARCHAR(255) NOT NULL UNIQUE,
+    subtitle VARCHAR(255) DEFAULT '',
+    ribbon VARCHAR(120) DEFAULT '',
     summary VARCHAR(300) DEFAULT '',
     description TEXT,
     price DECIMAL(10,2) NOT NULL,
+    discount_price DECIMAL(10,2) DEFAULT NULL,
     stock INT DEFAULT 0,
     tags VARCHAR(255) DEFAULT '',
+    weight_kg DECIMAL(8,3) DEFAULT NULL,
+    allow_personalization TINYINT(1) DEFAULT 0,
     category_id INT NULL,
     subcategory_id INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -46,6 +51,45 @@ const TABLE_QUERIES = [
     is_primary TINYINT(1) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+  )`,
+  `CREATE TABLE IF NOT EXISTS product_categories (
+    product_id INT NOT NULL,
+    category_id INT NOT NULL,
+    PRIMARY KEY (product_id, category_id),
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+  )`,
+  `CREATE TABLE IF NOT EXISTS product_subcategories (
+    product_id INT NOT NULL,
+    subcategory_id INT NOT NULL,
+    PRIMARY KEY (product_id, subcategory_id),
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (subcategory_id) REFERENCES subcategories(id) ON DELETE CASCADE
+  )`,
+  `CREATE TABLE IF NOT EXISTS variation_attributes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(120) NOT NULL UNIQUE
+  )`,
+  `CREATE TABLE IF NOT EXISTS variation_values (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    variation_attribute_id INT NOT NULL,
+    value VARCHAR(120) NOT NULL,
+    UNIQUE KEY unique_value (variation_attribute_id, value),
+    FOREIGN KEY (variation_attribute_id) REFERENCES variation_attributes(id) ON DELETE CASCADE
+  )`,
+  `CREATE TABLE IF NOT EXISTS product_variations (
+    product_id INT NOT NULL,
+    variation_value_id INT NOT NULL,
+    PRIMARY KEY (product_id, variation_value_id),
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (variation_value_id) REFERENCES variation_values(id) ON DELETE CASCADE
+  )`,
+  `CREATE TABLE IF NOT EXISTS product_related (
+    product_id INT NOT NULL,
+    related_product_id INT NOT NULL,
+    PRIMARY KEY (product_id, related_product_id),
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (related_product_id) REFERENCES products(id) ON DELETE CASCADE
   )`,
   `CREATE TABLE IF NOT EXISTS coupons (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -71,6 +115,18 @@ const TABLE_QUERIES = [
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
   )`
+];
+
+const MIGRATIONS = [
+  `ALTER TABLE products ADD COLUMN IF NOT EXISTS subtitle VARCHAR(255) DEFAULT '' AFTER slug`,
+  `ALTER TABLE products ADD COLUMN IF NOT EXISTS ribbon VARCHAR(120) DEFAULT '' AFTER subtitle`,
+  `ALTER TABLE products ADD COLUMN IF NOT EXISTS discount_price DECIMAL(10,2) DEFAULT NULL AFTER price`,
+  `ALTER TABLE products ADD COLUMN IF NOT EXISTS weight_kg DECIMAL(8,3) DEFAULT NULL AFTER tags`,
+  `ALTER TABLE products ADD COLUMN IF NOT EXISTS allow_personalization TINYINT(1) DEFAULT 0 AFTER weight_kg`,
+  `INSERT IGNORE INTO product_categories (product_id, category_id)
+   SELECT id, category_id FROM products WHERE category_id IS NOT NULL`,
+  `INSERT IGNORE INTO product_subcategories (product_id, subcategory_id)
+   SELECT id, subcategory_id FROM products WHERE subcategory_id IS NOT NULL`
 ];
 
 let pool;
@@ -102,6 +158,10 @@ export async function initDb() {
 
   for (const statement of TABLE_QUERIES) {
     await connection.query(statement);
+  }
+
+  for (const migration of MIGRATIONS) {
+    await connection.query(migration);
   }
 
   await connection.end();

@@ -5,15 +5,59 @@ import { requireAuth } from '../middleware/auth.js';
 const router = express.Router();
 
 const baseSelect = `
-  SELECT p.id, p.title, p.slug, p.summary, p.description, p.price, p.stock, p.tags,
+  SELECT p.id, p.title, p.slug, p.subtitle, p.ribbon, p.summary, p.description,
+         p.price, p.discount_price, p.stock, p.tags, p.weight_kg, p.allow_personalization,
          p.category_id, p.subcategory_id,
-         c.name AS category_name, sc.name AS subcategory_name,
-         GROUP_CONCAT(pi.image_url ORDER BY pi.is_primary DESC SEPARATOR ',') AS images
+         GROUP_CONCAT(DISTINCT CONCAT(c.id, ':', c.name) ORDER BY c.name SEPARATOR '|') AS categories,
+         GROUP_CONCAT(DISTINCT CONCAT(sc.id, ':', sc.name) ORDER BY sc.name SEPARATOR '|') AS subcategories,
+         GROUP_CONCAT(DISTINCT CONCAT(va.name, ':', vv.value) ORDER BY va.name, vv.value SEPARATOR '|') AS variations,
+         GROUP_CONCAT(DISTINCT pi.image_url ORDER BY pi.is_primary DESC, pi.id ASC SEPARATOR ',') AS images,
+         GROUP_CONCAT(DISTINCT pr.related_product_id ORDER BY pr.related_product_id SEPARATOR ',') AS related_products
   FROM products p
-  LEFT JOIN categories c ON p.category_id = c.id
-  LEFT JOIN subcategories sc ON p.subcategory_id = sc.id
+  LEFT JOIN product_categories pc ON pc.product_id = p.id
+  LEFT JOIN categories c ON pc.category_id = c.id
+  LEFT JOIN product_subcategories psc ON psc.product_id = p.id
+  LEFT JOIN subcategories sc ON psc.subcategory_id = sc.id
   LEFT JOIN product_images pi ON pi.product_id = p.id
+  LEFT JOIN product_variations pv ON pv.product_id = p.id
+  LEFT JOIN variation_values vv ON pv.variation_value_id = vv.id
+  LEFT JOIN variation_attributes va ON vv.variation_attribute_id = va.id
+  LEFT JOIN product_related pr ON pr.product_id = p.id
 `;
+
+function toNumericArray(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => Number(item))
+    .filter((num) => Number.isInteger(num) && num > 0);
+}
+
+async function resetLinks(connection, table, column, productId, values) {
+  await connection.execute(`DELETE FROM ${table} WHERE product_id = ?`, [productId]);
+  for (const value of values) {
+    await connection.execute(`INSERT IGNORE INTO ${table} (product_id, ${column}) VALUES (?, ?)`, [productId, value]);
+  }
+}
+
+async function insertImages(connection, productId, images = []) {
+  if (!images.length) return;
+
+  const hasPrimary = images.some((image) => image && image.is_primary);
+  let primarySet = false;
+
+  for (const [index, image] of images.entries()) {
+    if (!image || !image.image_url) continue;
+    const isPrimary = image.is_primary || (!hasPrimary && index === 0);
+    if (isPrimary && !primarySet) {
+      await connection.execute('UPDATE product_images SET is_primary = 0 WHERE product_id = ?', [productId]);
+      primarySet = true;
+    }
+    await connection.execute(
+      'INSERT INTO product_images (product_id, image_url, is_primary) VALUES (?, ?, ?)',
+      [productId, image.image_url, isPrimary ? 1 : 0]
+    );
+  }
+}
 
 router.get('/', async (req, res) => {
   const db = getPool();
@@ -21,11 +65,15 @@ router.get('/', async (req, res) => {
   const filters = [];
   const params = [];
   if (category) {
-    filters.push('p.category_id = ?');
+    filters.push(
+      'EXISTS (SELECT 1 FROM product_categories pc_filter WHERE pc_filter.product_id = p.id AND pc_filter.category_id = ?)'
+    );
     params.push(category);
   }
   if (subcategory) {
-    filters.push('p.subcategory_id = ?');
+    filters.push(
+      'EXISTS (SELECT 1 FROM product_subcategories psc_filter WHERE psc_filter.product_id = p.id AND psc_filter.subcategory_id = ?)'
+    );
     params.push(subcategory);
   }
   if (search) {
@@ -59,31 +107,189 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', requireAuth, async (req, res) => {
   const db = getPool();
-  const { title, slug, summary, description, price, stock, tags, category_id, subcategory_id } = req.body;
+  const {
+    title,
+    slug,
+    subtitle,
+    ribbon,
+    summary,
+    description,
+    price,
+    discount_price,
+    stock,
+    tags,
+    weight_kg,
+    allow_personalization,
+    category_id,
+    subcategory_id,
+    categories,
+    subcategories,
+    variation_value_ids,
+    related_product_ids,
+    images
+  } = req.body;
   if (!title || !slug || !price) {
     return res.status(400).json({ message: 'Title, slug and price are required' });
   }
-  const [result] = await db.execute(
-    `INSERT INTO products (title, slug, summary, description, price, stock, tags, category_id, subcategory_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [title, slug, summary || '', description || '', price, stock || 0, tags || '', category_id || null, subcategory_id || null]
+
+  const categoryList = toNumericArray(Array.isArray(categories) ? categories : category_id !== undefined ? [category_id] : []);
+  const subcategoryList = toNumericArray(
+    Array.isArray(subcategories) ? subcategories : subcategory_id !== undefined ? [subcategory_id] : []
   );
-  return res.status(201).json({ id: result.insertId });
+  const variationList = toNumericArray(Array.isArray(variation_value_ids) ? variation_value_ids : []);
+  const relatedList = toNumericArray(Array.isArray(related_product_ids) ? related_product_ids : []);
+
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [result] = await connection.execute(
+      `INSERT INTO products (
+        title, slug, subtitle, ribbon, summary, description, price, discount_price, stock, tags, weight_kg,
+        allow_personalization, category_id, subcategory_id
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        title,
+        slug,
+        subtitle || '',
+        ribbon || '',
+        summary || '',
+        description || '',
+        price,
+        discount_price ?? null,
+        stock || 0,
+        tags || '',
+        weight_kg ?? null,
+        allow_personalization ? 1 : 0,
+        categoryList[0] || null,
+        subcategoryList[0] || null
+      ]
+    );
+
+    const productId = result.insertId;
+
+    if (categoryList.length) {
+      await resetLinks(connection, 'product_categories', 'category_id', productId, categoryList);
+    }
+    if (subcategoryList.length) {
+      await resetLinks(connection, 'product_subcategories', 'subcategory_id', productId, subcategoryList);
+    }
+    if (variationList.length) {
+      await resetLinks(connection, 'product_variations', 'variation_value_id', productId, variationList);
+    }
+    if (relatedList.length) {
+      const filtered = relatedList.filter((id) => id !== productId);
+      if (filtered.length) {
+        await resetLinks(connection, 'product_related', 'related_product_id', productId, filtered);
+      }
+    }
+    if (Array.isArray(images)) {
+      await insertImages(connection, productId, images);
+    }
+
+    await connection.commit();
+    return res.status(201).json({ id: productId });
+  } catch (err) {
+    await connection.rollback();
+    return res.status(500).json({ message: 'Failed to create product', detail: err.message });
+  } finally {
+    connection.release();
+  }
 });
 
 router.put('/:id', requireAuth, async (req, res) => {
   const db = getPool();
-  const { title, slug, summary, description, price, stock, tags, category_id, subcategory_id } = req.body;
-  const [result] = await db.execute(
-    `UPDATE products SET title = ?, slug = ?, summary = ?, description = ?, price = ?, stock = ?, tags = ?,
-      category_id = ?, subcategory_id = ?
-     WHERE id = ?`,
-    [title, slug, summary, description, price, stock, tags, category_id, subcategory_id, req.params.id]
+  const {
+    title,
+    slug,
+    subtitle,
+    ribbon,
+    summary,
+    description,
+    price,
+    discount_price,
+    stock,
+    tags,
+    weight_kg,
+    allow_personalization,
+    category_id,
+    subcategory_id,
+    categories,
+    subcategories,
+    variation_value_ids,
+    related_product_ids,
+    images
+  } = req.body;
+
+  const categoryList = toNumericArray(Array.isArray(categories) ? categories : category_id !== undefined ? [category_id] : []);
+  const subcategoryList = toNumericArray(
+    Array.isArray(subcategories) ? subcategories : subcategory_id !== undefined ? [subcategory_id] : []
   );
-  if (!result.affectedRows) {
-    return res.status(404).json({ message: 'Product not found' });
+  const variationList = toNumericArray(Array.isArray(variation_value_ids) ? variation_value_ids : []);
+  const relatedList = toNumericArray(Array.isArray(related_product_ids) ? related_product_ids : []);
+
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [result] = await connection.execute(
+      `UPDATE products SET title = ?, slug = ?, subtitle = ?, ribbon = ?, summary = ?, description = ?, price = ?,
+        discount_price = ?, stock = ?, tags = ?, weight_kg = ?, allow_personalization = ?,
+        category_id = ?, subcategory_id = ?
+       WHERE id = ?`,
+      [
+        title,
+        slug,
+        subtitle,
+        ribbon,
+        summary,
+        description,
+        price,
+        discount_price ?? null,
+        stock,
+        tags,
+        weight_kg ?? null,
+        allow_personalization ? 1 : 0,
+        categoryList[0] || null,
+        subcategoryList[0] || null,
+        req.params.id
+      ]
+    );
+
+    if (!result.affectedRows) {
+      await connection.rollback();
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    if (categories !== undefined || category_id !== undefined) {
+      await resetLinks(connection, 'product_categories', 'category_id', req.params.id, categoryList);
+    }
+    if (subcategories !== undefined || subcategory_id !== undefined) {
+      await resetLinks(connection, 'product_subcategories', 'subcategory_id', req.params.id, subcategoryList);
+    }
+    if (variation_value_ids !== undefined) {
+      await resetLinks(connection, 'product_variations', 'variation_value_id', req.params.id, variationList);
+    }
+    if (related_product_ids !== undefined) {
+      const filtered = relatedList.filter((id) => id !== Number(req.params.id));
+      await resetLinks(connection, 'product_related', 'related_product_id', req.params.id, filtered);
+    }
+    if (Array.isArray(images)) {
+      await connection.execute('DELETE FROM product_images WHERE product_id = ?', [req.params.id]);
+      await insertImages(connection, req.params.id, images);
+    }
+
+    await connection.commit();
+    return res.json({ success: true });
+  } catch (err) {
+    await connection.rollback();
+    return res.status(500).json({ message: 'Failed to update product', detail: err.message });
+  } finally {
+    connection.release();
   }
-  return res.json({ success: true });
 });
 
 router.delete('/:id', requireAuth, async (req, res) => {

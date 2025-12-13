@@ -8,6 +8,7 @@ import productRoutes from './routes/products.js';
 import couponRoutes from './routes/coupons.js';
 import shippingRoutes from './routes/shipping.js';
 import cartRoutes from './routes/cart.js';
+import variationRoutes from './routes/variations.js';
 
 dotenv.config();
 
@@ -22,6 +23,7 @@ app.use('/products', productRoutes);
 app.use('/coupons', couponRoutes);
 app.use('/shipping-methods', shippingRoutes);
 app.use('/cart', cartRoutes);
+app.use('/variations', variationRoutes);
 
 const port = process.env.PORT || 4000;
 
