@@ -26,6 +26,7 @@ if (($user['role'] ?? 'customer') !== 'admin') {
       <div class="tabs">
         <button class="tab is-active" data-tab="catalog">Katalogas</button>
         <button class="tab" data-tab="orders">Užsakymai</button>
+        <button class="tab" data-tab="custom-orders">Individualūs užsakymai</button>
         <button class="tab" data-tab="account">Naudotojai</button>
       </div>
 
@@ -340,6 +341,23 @@ if (($user['role'] ?? 'customer') !== 'admin') {
                         <span>Suma</span>
                         <span>Būsena</span>
                     </div>
+                </div>
+            </div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-custom-orders">
+        <div class="section__inner">
+            <div class="section__header">
+                <p class="badge">Personalizacija</p>
+                <h3>Individualūs užsakymai</h3>
+                <p class="muted">Čia matysite tik užsakymus su personalizuotomis prekėmis ir jų dizaino nuotraukas.</p>
+            </div>
+            <div class="card card--surface" style="margin-top: 20px;">
+                <div class="actions" style="margin-bottom: 16px;">
+                    <button class="btn btn--ghost" id="refresh-custom-orders">Atnaujinti sąrašą</button>
+                </div>
+                <div class="stack stack--spacious" id="custom-orders-list">
                     </div>
             </div>
         </div>
