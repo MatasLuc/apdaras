@@ -5,16 +5,97 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/auth.php';
 
+function api_base_url(): string
+{
+    return rtrim(getenv('API_BASE_URL') ?: 'http://localhost:4000', '/');
+}
+
+function format_product_categories(?string $raw): array
+{
+    if (!$raw) {
+        return [];
+    }
+
+    $parts = array_filter(array_map('trim', explode('|', $raw)));
+    $names = [];
+
+    foreach ($parts as $part) {
+        $segments = explode(':', $part, 2);
+        if (count($segments) === 2 && $segments[1] !== '') {
+            $names[] = $segments[1];
+        }
+    }
+
+    return $names;
+}
+
 function cart_catalog(): array
 {
-    return [
-        ['id' => 'tee-urban', 'name' => 'Urban marškinėliai', 'price' => 24.00, 'category' => 'Marškinėliai', 'tag' => 'Nauja'],
-        ['id' => 'tee-oversize', 'name' => 'Oversize marškinėliai', 'price' => 27.00, 'category' => 'Marškinėliai', 'tag' => 'Bestseleris'],
-        ['id' => 'hoodie-core', 'name' => 'Core džemperis', 'price' => 39.00, 'category' => 'Džemperiai', 'tag' => 'Populiaru'],
-        ['id' => 'hoodie-zip', 'name' => 'Zip hoodie', 'price' => 42.00, 'category' => 'Džemperiai', 'tag' => 'Nauja'],
-        ['id' => 'cap-minimal', 'name' => 'Minimalistinė kepuraitė', 'price' => 19.00, 'category' => 'Aksesuarai', 'tag' => 'Ribotas kiekis'],
-        ['id' => 'bag-city', 'name' => 'City kuprinė', 'price' => 58.00, 'category' => 'Aksesuarai', 'tag' => 'Top pasirinkimas'],
-    ];
+    static $cachedCatalog = null;
+
+    if ($cachedCatalog !== null) {
+        return $cachedCatalog;
+    }
+
+    $url = api_base_url() . '/products';
+
+    if (!function_exists('curl_init')) {
+        $cachedCatalog = [];
+        return $cachedCatalog;
+    }
+
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+
+    $response = curl_exec($ch);
+    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($response === false || ($status && $status >= 400)) {
+        $cachedCatalog = [];
+        return $cachedCatalog;
+    }
+
+    $decoded = json_decode($response, true);
+    if (!is_array($decoded)) {
+        $cachedCatalog = [];
+        return $cachedCatalog;
+    }
+
+    $catalog = [];
+
+    foreach ($decoded as $product) {
+        if (!isset($product['id'], $product['title'], $product['price'])) {
+            continue;
+        }
+
+        $categories = format_product_categories($product['categories'] ?? '');
+        $tag = trim((string) ($product['ribbon'] ?? ''));
+
+        if (!$tag && !empty($product['tags'])) {
+            $tagParts = array_filter(array_map('trim', explode(',', (string) $product['tags'])));
+            $tag = $tagParts[0] ?? '';
+        }
+
+        $discount = $product['discount_price'] ?? null;
+        $finalPrice = $discount !== null && $discount !== '' ? (float) $discount : (float) $product['price'];
+
+        $catalog[] = [
+            'id' => (string) $product['id'],
+            'name' => (string) $product['title'],
+            'price' => $finalPrice,
+            'full_price' => (float) $product['price'],
+            'discount_price' => $discount !== null && $discount !== '' ? (float) $discount : null,
+            'category' => $categories[0] ?? 'Kategorija',
+            'tag' => $tag ?: 'Nauja',
+            'summary' => (string) ($product['summary'] ?? ($product['subtitle'] ?? '')),
+            'stock' => isset($product['stock']) ? (int) $product['stock'] : null,
+        ];
+    }
+
+    $cachedCatalog = $catalog;
+    return $cachedCatalog;
 }
 
 function ensure_cart_initialized(): void
@@ -77,6 +158,16 @@ function add_cart_item(string $productId, int $quantity = 1): ?array
 
     $quantity = max(1, min($quantity, 20));
 
+    if (isset($product['stock'])) {
+        $available = max(0, (int) $product['stock']);
+        $existingQty = isset($items[$productId]) ? (int) ($items[$productId]['qty'] ?? 0) : 0;
+        $quantity = min($quantity, max(0, $available - $existingQty));
+
+        if ($quantity === 0) {
+            return null;
+        }
+    }
+
     if (isset($items[$productId])) {
         $items[$productId]['qty'] += $quantity;
     } else {
@@ -106,6 +197,11 @@ function update_cart_item(string $productId, int $quantity): void
     }
 
     $quantity = max(0, min($quantity, 20));
+
+    $product = find_catalog_product($productId);
+    if ($product && isset($product['stock'])) {
+        $quantity = min($quantity, max(0, (int) $product['stock']));
+    }
 
     if ($quantity === 0) {
         unset($items[$productId]);

@@ -304,6 +304,8 @@ a { color: inherit; text-decoration: none; }
 .card__eyebrow { color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-size: 12px; font-weight: 800; }
 .card__title { font-size: 22px; margin: 6px 0; }
 .card__price { color: var(--accent-2); font-size: 18px; font-weight: 800; }
+.price-stack { display: flex; gap: 8px; align-items: baseline; }
+.card__old-price { color: var(--muted); text-decoration: line-through; font-weight: 600; font-size: 14px; }
 
 .card__header {
   display: flex;
