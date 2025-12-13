@@ -65,7 +65,7 @@ if (($user['role'] ?? 'customer') !== 'admin') {
                     <span>Kaina</span>
                     <span>Veiksmai</span>
                   </div>
-                  </div>
+                </div>
               </div>
 
               <div class="card card--surface admin-card" id="category-management" data-admin-section>
