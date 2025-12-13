@@ -5,10 +5,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $productId = $_POST['product_id'] ?? '';
     $quantity = (int) ($_POST['qty'] ?? 1);
 
+    // Parduotuvės puslapyje dedame tik paprastas prekes.
+    // Variacijas turinčios prekės čia neturėtų būti siunčiamos per POST, nes UI jas paslepia.
     $added = add_cart_item($productId, $quantity);
 
     $_SESSION['cart_alert'] = $added
-        ? ['type' => 'success', 'text' => $added['name'] . ' pridėta į krepšelį.']
+        ? ['type' => 'success', 'text' => 'Prekė pridėta į krepšelį.']
         : ['type' => 'error', 'text' => 'Nepavyko pridėti prekės.'];
 
     header('Location: parduotuve.php');
@@ -105,11 +107,18 @@ unset($_SESSION['cart_alert']);
                         <span class="card__old-price">€<?php echo number_format($product['full_price'], 2, '.', ''); ?></span>
                       <?php endif; ?>
                     </div>
-                    <form method="post" class="product-form" style="width: 100%; display: flex; gap: 8px; margin-top: 8px;">
-                      <input type="hidden" name="product_id" value="<?php echo htmlspecialchars($product['id'], ENT_QUOTES, 'UTF-8'); ?>">
-                      <button class="btn btn--soft" type="submit" style="flex: 1;">Į krepšelį</button>
-                      <a class="btn btn--primary" href="produktas.php?id=<?php echo $product['id']; ?>" style="flex: 1; justify-content: center;">Plačiau</a>
-                    </form>
+                    
+                    <div style="width: 100%; display: flex; gap: 8px; margin-top: 8px;">
+                      <?php if ($product['has_variations']): ?>
+                        <a class="btn btn--primary" href="produktas.php?id=<?php echo $product['id']; ?>" style="flex: 1; justify-content: center;">Pasirinkti savybes</a>
+                      <?php else: ?>
+                        <form method="post" class="product-form" style="flex: 1; display:flex; gap:8px;">
+                          <input type="hidden" name="product_id" value="<?php echo htmlspecialchars($product['id'], ENT_QUOTES, 'UTF-8'); ?>">
+                          <button class="btn btn--soft" type="submit" style="flex: 1;">Į krepšelį</button>
+                          <a class="btn btn--primary" href="produktas.php?id=<?php echo $product['id']; ?>">Plačiau</a>
+                        </form>
+                      <?php endif; ?>
+                    </div>
                   </div>
                 </article>
               <?php endforeach; ?>
