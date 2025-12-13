@@ -1,9 +1,8 @@
 <?php
-// db.php - Prisijungimas ir automatinis struktūros užtikrinimas (Auto-migration)
+// db.php - Prisijungimas ir automatinis struktūros užtikrinimas
 
 declare(strict_types=1);
 
-// Rodyti klaidas tik vystymo metu
 ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
@@ -67,36 +66,37 @@ function get_db_connection(): PDO
         die('<h1>DB Prisijungimo Klaida:</h1> ' . $e->getMessage());
     }
 
-    // Paleidžiame struktūros patikrinimą
     ensure_schema($pdo);
 
     return $pdo;
 }
 
-// Pagalbinė funkcija stulpeliui pridėti, jei jo nėra
 function ensure_column(PDO $pdo, string $table, string $columnDef): void
 {
     try {
-        // Bandome pridėti. Jei stulpelis yra, MySQL išmes klaidą "Duplicate column name", kurią mes pagausime ir ignoruosime.
         $pdo->exec("ALTER TABLE {$table} ADD COLUMN {$columnDef}");
     } catch (PDOException $e) {
-        // Ignoruojame klaidą 42S21 (Column already exists)
+        // Ignoruojame klaidą, jei stulpelis jau yra (kodas 1060)
         if ($e->errorInfo[1] != 1060) {
-            // Jei klaida ne apie egzistuojantį stulpelį, galbūt verta ją paminėti loguose, bet dažniausiai tai saugu praleisti
-            // error_log("Schema update notice for $table: " . $e->getMessage());
+            // Galima loguoti kitas klaidas
         }
     }
 }
 
 function ensure_schema(PDO $pdo): void
 {
-    // 1. Sukuriame lenteles, jei jų nėra (CREATE TABLE IF NOT EXISTS)
+    // 1. Kuriame lenteles
     $createQueries = [
         "CREATE TABLE IF NOT EXISTS users (
             id INT AUTO_INCREMENT PRIMARY KEY,
             email VARCHAR(255) NOT NULL UNIQUE,
             password_hash VARCHAR(255) NOT NULL,
             name VARCHAR(150) NOT NULL,
+            role ENUM('customer', 'admin') DEFAULT 'customer',
+            profile_image VARCHAR(255) DEFAULT NULL,
+            birthdate DATE DEFAULT NULL,
+            address TEXT DEFAULT NULL,
+            gender ENUM('male', 'female', 'unspecified') DEFAULT 'unspecified',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
 
@@ -112,7 +112,8 @@ function ensure_schema(PDO $pdo): void
             category_id INT NOT NULL,
             name VARCHAR(255) NOT NULL,
             slug VARCHAR(255) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
 
         "CREATE TABLE IF NOT EXISTS products (
@@ -210,12 +211,14 @@ function ensure_schema(PDO $pdo): void
     ];
 
     foreach ($createQueries as $query) {
-        $pdo->exec($query);
+        try {
+            $pdo->exec($query);
+        } catch (PDOException $e) {
+            die("<h1>DB Klaida</h1><p>Nepavyko sukurti lentelės.</p><p>" . $e->getMessage() . "</p>");
+        }
     }
 
-    // 2. Užtikriname, kad visi reikalingi stulpeliai egzistuoja (ALTER TABLE ADD COLUMN)
-    // Tai ištaisys "Unknown column" klaidas, jei lentelės buvo sukurtos anksčiau be šių laukų.
-
+    // 2. Atnaujiname esamas lenteles (užtikriname stulpelius)
     // USERS
     ensure_column($pdo, 'users', "role ENUM('customer', 'admin') DEFAULT 'customer'");
     ensure_column($pdo, 'users', "profile_image VARCHAR(255) DEFAULT NULL");
@@ -236,14 +239,15 @@ function ensure_schema(PDO $pdo): void
     ensure_column($pdo, 'products', "category_id INT DEFAULT NULL");
     ensure_column($pdo, 'products', "subcategory_id INT DEFAULT NULL");
 
-    // CART_ITEMS (Čia buvo jūsų klaida!)
+    // CART & CART_ITEMS
     ensure_column($pdo, 'cart_items', "cart_id INT NOT NULL");
     ensure_column($pdo, 'cart_items', "product_id INT NOT NULL");
     ensure_column($pdo, 'cart_items', "variation_id INT DEFAULT NULL");
+    ensure_column($pdo, 'cart_items', "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"); // PAKEITIMAS: pridedame created_at
     
-    // CARTS
     ensure_column($pdo, 'carts', "user_id INT DEFAULT NULL");
     ensure_column($pdo, 'carts', "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+    ensure_column($pdo, 'carts', "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
 
     // ORDERS
     ensure_column($pdo, 'orders', "user_id INT DEFAULT NULL");
