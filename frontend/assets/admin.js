@@ -12,10 +12,10 @@ document.addEventListener('DOMContentLoaded', () => {
         subcategoryIds: new Set(),
         variationIds: new Set(),
         relatedIds: new Set(),
-        editingId: null
+        editingId: null,
+        orders: []
     };
 
-    // DOM elementai
     const elements = {
         tabs: document.querySelectorAll('.tab'),
         panels: document.querySelectorAll('.tab-panel'),
@@ -35,10 +35,10 @@ document.addEventListener('DOMContentLoaded', () => {
         adminNav: document.querySelectorAll('.admin-nav__item'),
         adminSections: document.querySelectorAll('[data-admin-section]'),
         cancelEditBtn: document.getElementById('cancel-edit'),
-        openNewProductBtn: document.getElementById('open-new-product')
+        openNewProductBtn: document.getElementById('open-new-product'),
+        ordersTable: document.getElementById('orders-table'),
+        refreshOrdersBtn: document.getElementById('refresh-orders')
     };
-
-    // --- Pagalbinės funkcijos ---
 
     function formatCurrency(value) {
         const num = Number(value || 0);
@@ -50,7 +50,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const segments = rawPath.replace(/^\/+/g, '').split('/').filter(Boolean);
         const [resource, ...rest] = segments;
         if (!resource) return apiBaseUrl;
-
         let url = `${apiBaseUrl}${resource}.php`;
         if (rest.length) url += `/${rest.join('/')}`;
         if (typeof query === 'string') url += `?${query}`;
@@ -61,16 +60,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const headers = { 'X-Admin-Role': config.userRole, ...(options.headers || {}) };
         const response = await fetch(buildApiUrl(path), { credentials: 'include', ...options, headers });
         let payload;
-        const text = await response.text();
         try {
+            const text = await response.text();
             payload = text ? JSON.parse(text) : null;
-        } catch (err) {
-            payload = null;
-        }
+        } catch (err) { payload = null; }
         if (!response.ok) {
             const detail = payload?.detail ? `: ${payload.detail}` : '';
-            const message = payload?.message || `Klaida ${response.status}`;
-            throw new Error(`${message}${detail}`);
+            throw new Error(`${payload?.message || response.status}${detail}`);
         }
         return payload;
     }
@@ -84,24 +80,18 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => note.remove(), 5000);
     }
 
-    // --- UI Valdymas ---
-
     function setupCollapsibles() {
         document.querySelectorAll('.collapsible').forEach((section) => {
             const body = section.querySelector('.collapsible__body');
             const toggle = section.querySelector('.collapsible__toggle');
             if (!body || !toggle) return;
-            
             const sync = () => {
                 const open = section.classList.contains('is-open');
                 body.style.display = open ? '' : 'none';
                 toggle.textContent = open ? 'Suskleisti' : 'Išskleisti';
             };
             sync();
-            toggle.addEventListener('click', () => {
-                section.classList.toggle('is-open');
-                sync();
-            });
+            toggle.addEventListener('click', () => section.classList.toggle('is-open') && sync());
         });
     }
 
@@ -111,35 +101,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 const target = tab.dataset.tab;
                 elements.tabs.forEach((btn) => btn.classList.toggle('is-active', btn === tab));
                 elements.panels.forEach((panel) => panel.classList.toggle('is-active', panel.id === `tab-${target}`));
+                
+                if (target === 'orders') {
+                    loadOrders();
+                }
             });
         });
     }
 
     function showSection(targetId) {
         elements.adminNav.forEach((item) => item.classList.toggle('is-active', item.dataset.target === targetId));
-        elements.adminSections.forEach((card) => {
-            card.classList.toggle('is-active', card.id === targetId);
-        });
-        
-        if (targetId === 'catalog-summary') {
-            resetForm();
-        }
-        
+        elements.adminSections.forEach((card) => card.classList.toggle('is-active', card.id === targetId));
+        if (targetId === 'catalog-summary') resetForm();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function setupAdminNavigation() {
-        elements.adminNav.forEach((item) => {
-            item.addEventListener('click', () => {
-                showSection(item.dataset.target);
-            });
-        });
-        
-        if (config.initialProductId) {
-             startEditProduct(config.initialProductId);
-        } else {
-             showSection('catalog-summary');
-        }
+        elements.adminNav.forEach((item) => item.addEventListener('click', () => showSection(item.dataset.target)));
+        config.initialProductId ? startEditProduct(config.initialProductId) : showSection('catalog-summary');
     }
     
     function resetForm() {
@@ -152,15 +131,58 @@ document.addEventListener('DOMContentLoaded', () => {
         state.subcategoryIds.clear();
         state.variationIds.clear();
         state.relatedIds.clear();
-        
         renderCategorySelect();
         renderVariations();
         renderImages();
         renderRelated();
     }
 
-    // --- Produkto Redagavimo Logika ---
+    // --- UŽSAKYMAI ---
+    async function loadOrders() {
+        if (!elements.ordersTable) return;
+        try {
+            const orders = await fetchJson('/orders');
+            state.orders = orders;
+            renderOrders();
+        } catch (e) {
+            console.error(e);
+        }
+    }
 
+    function renderOrders() {
+        elements.ordersTable.querySelectorAll('.table__row:not(.table__row--head)').forEach(r => r.remove());
+        
+        if (!state.orders.length) {
+            elements.ordersTable.insertAdjacentHTML('beforeend', '<div class="table__row"><span class="muted">Nėra užsakymų</span></div>');
+            return;
+        }
+
+        state.orders.forEach(order => {
+            const date = new Date(order.created_at).toLocaleString('lt-LT');
+            const statusMap = { 'new': 'Naujas', 'paid': 'Apmokėtas', 'shipped': 'Išsiųstas', 'completed': 'Įvykdytas', 'cancelled': 'Atšauktas' };
+            const statusLabel = statusMap[order.status] || order.status;
+            const itemsSummary = (order.items || []).map(i => `${i.product_name} (${i.quantity} vnt.)`).join(', ');
+
+            const row = document.createElement('div');
+            row.className = 'table__row';
+            row.title = itemsSummary;
+            row.innerHTML = `
+                <div>
+                    <strong class="text-link">#${order.id}</strong>
+                    <div class="muted" style="font-size:12px">${date}</div>
+                </div>
+                <div>
+                    <div>${order.contact_name || 'Svečias'}</div>
+                    <div class="muted" style="font-size:12px">${order.contact_email}</div>
+                </div>
+                <div class="strong">${formatCurrency(order.total_price)}</div>
+                <div><span class="pill">${statusLabel}</span></div>
+            `;
+            elements.ordersTable.appendChild(row);
+        });
+    }
+
+    // --- PRODUKTAI ---
     window.startEditProduct = async function(id) {
         try {
             await loadProduct(id);
@@ -168,14 +190,13 @@ document.addEventListener('DOMContentLoaded', () => {
             showSection('product-editor');
             elements.formTitle.textContent = `Redaguojama prekė #${id}`;
         } catch (e) {
-            alert('Klaida atidarant produktą: ' + e.message);
+            alert('Klaida: ' + e.message);
         }
     };
 
     async function loadProduct(productId) {
         if (!productId) return;
         const data = await fetchJson(`/products/${productId}`);
-        
         const f = elements.form;
         f.querySelector('[name="title"]').value = data.title || '';
         f.querySelector('[name="subtitle"]').value = data.subtitle || '';
@@ -189,10 +210,10 @@ document.addEventListener('DOMContentLoaded', () => {
         f.querySelector('[name="weight_kg"]').value = data.weight_kg || '';
         f.querySelector('[name="allow_personalization"]').value = data.allow_personalization ? '1' : '0';
 
-        state.categoryIds = new Set((data.categories_list || []).map((c) => c.id));
-        state.subcategoryIds = new Set((data.subcategories_list || []).map((c) => c.id));
-        state.variationIds = new Set(data.variation_value_ids || []);
-        state.relatedIds = new Set(data.related_product_ids || []);
+        state.categoryIds = new Set((data.categories_list || []).map(c => Number(c.id)));
+        state.subcategoryIds = new Set((data.subcategories_list || []).map(c => Number(c.id)));
+        state.variationIds = new Set((data.variation_value_ids || []).map(Number));
+        state.relatedIds = new Set((data.related_product_ids || []).map(Number));
         state.images = (data.images_list || []).map((img, index) => ({
             image_url: img.image_url,
             is_primary: img.is_primary || index === 0
@@ -204,8 +225,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderRelated();
     }
 
-    // --- Renderinimas ---
-
     function renderProductTable() {
         elements.productTable.querySelectorAll('.table__row:not(.table__row--head)').forEach((row) => row.remove());
         if (!state.products.length) {
@@ -215,12 +234,10 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.productTable.appendChild(empty);
             return;
         }
-
         state.products.forEach((product) => {
             const row = document.createElement('div');
             row.className = 'table__row';
             const categories = (product.categories_list || []).map((c) => c.name).join(', ');
-            
             const mainImage = (product.images_list || []).find(img => img.is_primary) || (product.images_list || [])[0];
             const imgHtml = mainImage 
                 ? `<img src="${mainImage.image_url}" class="table-thumb" alt="" />`
@@ -294,8 +311,9 @@ document.addEventListener('DOMContentLoaded', () => {
             wrapper.innerHTML = `<p class="card__eyebrow">${cat.name}</p>`;
             const catLabel = document.createElement('label');
             catLabel.className = 'checkbox';
+            const isChecked = state.categoryIds.has(Number(cat.id));
             catLabel.innerHTML = `
-              <input type="checkbox" data-type="category" value="${cat.id}" ${state.categoryIds.has(cat.id) ? 'checked' : ''}/>
+              <input type="checkbox" data-type="category" value="${cat.id}" ${isChecked ? 'checked' : ''}/>
               <span>Priskirti kategoriją</span>
             `;
             wrapper.appendChild(catLabel);
@@ -305,8 +323,9 @@ document.addEventListener('DOMContentLoaded', () => {
             (cat.subcategories || []).forEach((sub) => {
                 const scLabel = document.createElement('label');
                 scLabel.className = 'checkbox';
+                const isSubChecked = state.subcategoryIds.has(Number(sub.id));
                 scLabel.innerHTML = `
-                  <input type="checkbox" data-type="subcategory" value="${sub.id}" ${state.subcategoryIds.has(sub.id) ? 'checked' : ''}/>
+                  <input type="checkbox" data-type="subcategory" value="${sub.id}" ${isSubChecked ? 'checked' : ''}/>
                   <span>${sub.name}</span>
                 `;
                 scList.appendChild(scLabel);
@@ -353,8 +372,9 @@ document.addEventListener('DOMContentLoaded', () => {
             attr.values.forEach((val) => {
                 const chip = document.createElement('label');
                 chip.className = 'chip chip--interactive';
+                const isChecked = state.variationIds.has(Number(val.id));
                 chip.innerHTML = `
-                  <input type="checkbox" value="${val.id}" ${state.variationIds.has(val.id) ? 'checked' : ''}/>
+                  <input type="checkbox" value="${val.id}" ${isChecked ? 'checked' : ''}/>
                   <span>${val.value}</span>
                 `;
                 pickerList.appendChild(chip);
@@ -372,10 +392,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .forEach((item) => {
                 const row = document.createElement('div');
                 row.className = 'list__item';
-                row.innerHTML = `
-                  <span>${item.title}</span>
-                  <button class="btn btn--ghost" type="button" data-id="${item.id}">Pridėti</button>
-                `;
+                row.innerHTML = `<span>${item.title}</span><button class="btn btn--ghost" type="button" data-id="${item.id}">Pridėti</button>`;
                 elements.relatedResults.appendChild(row);
             });
 
@@ -385,10 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!product) return;
             const chip = document.createElement('div');
             chip.className = 'chip chip--interactive';
-            chip.innerHTML = `
-              <span>${product.title}</span>
-              <button class="link text-danger" type="button" data-id="${id}">Šalinti</button>
-            `;
+            chip.innerHTML = `<span>${product.title}</span><button class="link text-danger" type="button" data-id="${id}">Šalinti</button>`;
             elements.relatedSelected.appendChild(chip);
         });
     }
@@ -409,8 +423,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Duomenų įkėlimas ir siuntimas ---
-
     async function loadCollections() {
         try {
             const [products, categories, variations] = await Promise.all([
@@ -418,28 +430,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetchJson('/categories'),
                 fetchJson('/variations')
             ]);
-
-            state.products = products;
+            state.products = products.map(p => ({...p, id: Number(p.id)}));
             state.categories = categories.reduce((acc, row) => {
-                let entry = acc.find((item) => item.id === row.id);
+                const id = Number(row.id);
+                let entry = acc.find((item) => item.id === id);
                 if (!entry) {
-                    entry = { id: row.id, name: row.name, slug: row.slug, subcategories: [] };
+                    entry = { id, name: row.name, slug: row.slug, subcategories: [] };
                     acc.push(entry);
                 }
                 if (row.subcategory_id) {
-                    entry.subcategories.push({ id: row.subcategory_id, name: row.subcategory_name, slug: row.subcategory_slug });
+                    entry.subcategories.push({ id: Number(row.subcategory_id), name: row.subcategory_name, slug: row.subcategory_slug });
                 }
                 return acc;
             }, []);
             state.variations = variations;
-
             renderProductTable();
             renderCategoryManager();
             renderCategorySelect();
             renderVariations();
             renderRelated();
         } catch (error) {
-            elements.productTable.insertAdjacentHTML('beforeend', `<div class="table__row"><span class="text-danger">${error.message}</span></div>`);
             pushMessage(`Nepavyko įkelti duomenų: ${error.message}`, 'error');
         }
     }
@@ -460,10 +470,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 )
             });
             await loadCollections();
-            pushMessage(isSubcategory ? 'Subkategorija pridėta' : 'Kategorija pridėta', 'success');
-        } catch (error) {
-            pushMessage(`Nepavyko išsaugoti: ${error.message}`, 'error');
-        }
+            pushMessage('Išsaugota', 'success');
+        } catch (error) { pushMessage(error.message, 'error'); }
     }
 
     async function editCategory(id) {
@@ -471,7 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!target) return;
         const name = prompt('Naujas pavadinimas', target.name);
         const slug = prompt('Naujas slug', target.slug);
-        if (!name || !slug) return;
+        if (!name) return;
         await fetchJson(`/categories/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -481,7 +489,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function deleteCategory(id) {
-        if(!confirm('Ar tikrai norite trinti kategoriją?')) return;
+        if(!confirm('Ar tikrai norite trinti?')) return;
         await fetchJson(`/categories/${id}`, { method: 'DELETE' });
         await loadCollections();
     }
@@ -499,83 +507,36 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     state.images.push({ image_url: response.url, is_primary: !state.images.length });
                     renderImages();
-                } catch (error) {
-                    alert(`Nepavyko įkelti failo: ${error.message}`);
-                }
+                } catch (error) { alert(error.message); }
             };
             reader.readAsDataURL(file);
         }
     }
 
-    // --- Event Listeners ---
+    if(elements.openNewProductBtn) elements.openNewProductBtn.addEventListener('click', () => { resetForm(); showSection('product-editor'); });
+    if(elements.cancelEditBtn) elements.cancelEditBtn.addEventListener('click', () => { if(confirm('Atšaukti?')) showSection('catalog-summary'); });
+    if(elements.refreshOrdersBtn) elements.refreshOrdersBtn.addEventListener('click', loadOrders);
 
-    if(elements.openNewProductBtn) {
-        elements.openNewProductBtn.addEventListener('click', () => {
-            resetForm();
-            showSection('product-editor');
-        });
-    }
-
-    if(elements.cancelEditBtn) {
-        elements.cancelEditBtn.addEventListener('click', () => {
-            if(confirm('Ar tikrai norite atšaukti? Visi pakeitimai bus prarasti.')) {
-                showSection('catalog-summary');
-            }
-        });
-    }
-
-    document.getElementById('category-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await upsertCategory(new FormData(e.target));
-        e.target.reset();
-    });
-
-    document.getElementById('subcategory-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await upsertCategory(new FormData(e.target), true);
-        e.target.reset();
-    });
-
-    document.getElementById('variation-attribute-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
+    document.getElementById('category-form').addEventListener('submit', async (e) => { e.preventDefault(); await upsertCategory(new FormData(e.target)); e.target.reset(); });
+    document.getElementById('subcategory-form').addEventListener('submit', async (e) => { e.preventDefault(); await upsertCategory(new FormData(e.target), true); e.target.reset(); });
+    document.getElementById('variation-attribute-form').addEventListener('submit', async (e) => { e.preventDefault(); 
         const name = document.getElementById('variation-attribute-name').value.trim();
         if (!name) return;
-        try {
-            await fetchJson('/variations/attributes', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name })
-            });
-            e.target.reset();
-            await loadCollections();
-            pushMessage('Variacijos atributas pridėtas', 'success');
-        } catch (error) {
-            pushMessage(`Nepavyko: ${error.message}`, 'error');
-        }
+        await fetchJson('/variations/attributes', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({name}) });
+        e.target.reset(); await loadCollections();
     });
     
     document.getElementById('add-variation-value').addEventListener('click', async () => {
          const value = document.getElementById('new-variation-value').value.trim();
          const attributeId = Number(elements.variationSelect.value);
          if (!value || !attributeId) return;
-         try {
-            await fetchJson(`/variations/attributes/${attributeId}/values`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ value })
-            });
-            document.getElementById('new-variation-value').value = '';
-            await loadCollections();
-            pushMessage('Reikšmė pridėta', 'success');
-         } catch (error) {
-            pushMessage(`Klaida: ${error.message}`, 'error');
-         }
+         await fetchJson(`/variations/attributes/${attributeId}/values`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({value}) });
+         document.getElementById('new-variation-value').value = ''; await loadCollections();
     });
 
     elements.form.addEventListener('submit', async (event) => {
         event.preventDefault();
         const formData = new FormData(event.target);
-        
         const payload = {
             title: formData.get('title') || '',
             slug: (formData.get('title') || '').toLowerCase().replace(/\s+/g, '-'),
@@ -593,46 +554,25 @@ document.addEventListener('DOMContentLoaded', () => {
             subcategories: Array.from(state.subcategoryIds),
             variation_value_ids: Array.from(state.variationIds),
             related_product_ids: Array.from(state.relatedIds),
-            images: state.images.map((img, index) => ({ 
-                image_url: img.image_url, 
-                is_primary: img.is_primary || index === 0 
-            }))
+            images: state.images.map((img, index) => ({ image_url: img.image_url, is_primary: img.is_primary || index === 0 }))
         };
 
         try {
             const endpoint = state.editingId ? `/products/${state.editingId}` : '/products';
             const method = state.editingId ? 'PUT' : 'POST';
-            
-            await fetchJson(endpoint, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            pushMessage(state.editingId ? 'Produktas atnaujintas' : 'Produktas sukurtas', 'success');
+            await fetchJson(endpoint, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            pushMessage('Išsaugota', 'success');
             await loadCollections();
             showSection('catalog-summary');
-        } catch (error) {
-            pushMessage(`Nepavyko išsaugoti: ${error.message}`, 'error');
-        }
+        } catch (error) { pushMessage(error.message, 'error'); }
     });
     
-    // --- Pataisyta kategorijų pasirinkimo logika ---
     elements.categorySelect.addEventListener('change', (e) => {
         const { type } = e.target.dataset;
-        const value = e.target.value; // SVARBU: imame value tiesiogiai, ne iš dataset
-        
+        const value = Number(e.target.value);
         if (!type) return;
         const set = type === 'category' ? state.categoryIds : state.subcategoryIds;
-        e.target.checked ? set.add(Number(value)) : set.delete(Number(value));
-    });
-
-    elements.categoryManager.addEventListener('click', (e) => {
-       const btn = e.target.closest('button');
-       if(!btn) return;
-       const { action, subAction, id, cat } = btn.dataset;
-       if (action === 'edit') editCategory(id);
-       if (action === 'delete') deleteCategory(id);
+        e.target.checked ? set.add(value) : set.delete(value);
     });
 
     elements.variationPicker.addEventListener('change', (e) => {
@@ -641,11 +581,15 @@ document.addEventListener('DOMContentLoaded', () => {
         e.target.checked ? state.variationIds.add(val) : state.variationIds.delete(val);
     });
 
-    document.getElementById('image-upload').addEventListener('change', (e) => {
-        uploadFiles(Array.from(e.target.files || []));
-        e.target.value = '';
+    elements.categoryManager.addEventListener('click', (e) => {
+       const btn = e.target.closest('button');
+       if(!btn) return;
+       const { action, id } = btn.dataset;
+       if (action === 'edit') editCategory(id);
+       if (action === 'delete') deleteCategory(id);
     });
     
+    document.getElementById('image-upload').addEventListener('change', (e) => { uploadFiles(Array.from(e.target.files || [])); e.target.value = ''; });
     document.getElementById('add-image').addEventListener('click', () => {
         const url = document.getElementById('image-url').value.trim();
         if(!url) return;
@@ -655,35 +599,16 @@ document.addEventListener('DOMContentLoaded', () => {
         renderImages();
         document.getElementById('image-url').value = '';
     });
-    
     elements.imageList.addEventListener('click', (e) => {
-        if(e.target.classList.contains('remove')) {
-            state.images.splice(Number(e.target.dataset.index), 1);
-        }
-        if(e.target.classList.contains('set-primary')) {
-            state.images.forEach((img, i) => img.is_primary = i === Number(e.target.dataset.index));
-        }
+        if(e.target.classList.contains('remove')) state.images.splice(Number(e.target.dataset.index), 1);
+        if(e.target.classList.contains('set-primary')) state.images.forEach((img, i) => img.is_primary = i === Number(e.target.dataset.index));
         renderImages();
     });
     
     const searchInput = document.getElementById('related-search');
-    if(searchInput) {
-        searchInput.addEventListener('input', (e) => renderRelated(e.target.value));
-    }
-    elements.relatedResults.addEventListener('click', (e) => {
-         const btn = e.target.closest('button');
-         if(btn) {
-             state.relatedIds.add(Number(btn.dataset.id));
-             renderRelated(searchInput.value);
-         }
-    });
-    elements.relatedSelected.addEventListener('click', (e) => {
-         const btn = e.target.closest('button');
-         if(btn) {
-             state.relatedIds.delete(Number(btn.dataset.id));
-             renderRelated(searchInput.value);
-         }
-    });
+    if(searchInput) searchInput.addEventListener('input', (e) => renderRelated(e.target.value));
+    elements.relatedResults.addEventListener('click', (e) => { const btn = e.target.closest('button'); if(btn) { state.relatedIds.add(Number(btn.dataset.id)); renderRelated(searchInput.value); } });
+    elements.relatedSelected.addEventListener('click', (e) => { const btn = e.target.closest('button'); if(btn) { state.relatedIds.delete(Number(btn.dataset.id)); renderRelated(searchInput.value); } });
 
     renderTabs();
     setupCollapsibles();
