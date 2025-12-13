@@ -215,8 +215,6 @@ function ensure_schema(PDO $pdo): void
         try { $pdo->exec($sql); } catch (PDOException $e) {}
     }
 
-    // 2. TAISYMAS: Panaikiname klaidingą stulpelį 'user_id' iš 'cart_items'
-    // Jei nepavyksta ištrinti, bent padarome jį nullable, kad netrukdytų
     try {
         $pdo->exec("ALTER TABLE cart_items DROP COLUMN user_id");
     } catch (PDOException $e) {
@@ -240,6 +238,8 @@ function ensure_schema(PDO $pdo): void
 
     ensure_column($pdo, 'cart_items', "cart_id INT NOT NULL");
     ensure_column($pdo, 'cart_items', "variation_id INT DEFAULT NULL");
+    // NAUJA: Personalizacijos duomenys krepšelyje
+    ensure_column($pdo, 'cart_items', "personalization_data TEXT DEFAULT NULL");
     
     ensure_column($pdo, 'carts', "user_id INT DEFAULT NULL");
     ensure_column($pdo, 'carts', "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
@@ -252,12 +252,13 @@ function ensure_schema(PDO $pdo): void
 
     ensure_column($pdo, 'order_items', "product_id INT DEFAULT NULL");
     ensure_column($pdo, 'order_items', "variation_info VARCHAR(255) DEFAULT NULL");
+    // NAUJA: Personalizacijos duomenys užsakyme
+    ensure_column($pdo, 'order_items', "personalization_data TEXT DEFAULT NULL");
     
     ensure_column($pdo, 'coupons', "usage_limit INT DEFAULT NULL");
     ensure_column($pdo, 'coupons', "times_used INT DEFAULT 0");
 }
 
-// ... Toliau funkcijos find_user_by_email, create_user ir t.t. lieka tos pačios ...
 function find_user_by_email(PDO $pdo, string $email): ?array {
     $stmt = $pdo->prepare('SELECT id, email, password_hash, name, role, profile_image, birthdate, address, gender FROM users WHERE email = ? LIMIT 1');
     $stmt->execute([$email]);
