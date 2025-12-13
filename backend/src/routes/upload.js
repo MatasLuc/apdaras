@@ -32,7 +32,8 @@ router.post('/', requireAuth, async (req, res) => {
     const targetPath = path.join(uploadDir, finalName);
     await fs.writeFile(targetPath, buffer);
 
-    return res.status(201).json({ url: `/upload/${finalName}`, size: buffer.length, mime });
+    const absoluteUrl = `${req.protocol}://${req.get('host')}/upload/${finalName}`;
+    return res.status(201).json({ url: absoluteUrl, size: buffer.length, mime });
   } catch (err) {
     return res.status(500).json({ message: 'Nepavyko įrašyti failo', detail: err.message });
   }

@@ -376,8 +376,7 @@ if (($user['role'] ?? 'customer') !== 'admin') {
   </main>
 
   <script>
-    const apiBaseFromEnv = "<?php echo rtrim(getenv('API_BASE_URL') ?: '', '/'); ?>";
-    const apiBaseUrl = apiBaseFromEnv || window.location.origin;
+    const apiBaseUrl = "<?php echo rtrim(env_value('API_BASE_URL', 'http://localhost:4000'), '/'); ?>";
     const params = new URLSearchParams(window.location.search);
     const editingProductId = params.get('productId');
     const adminRole = "<?php echo htmlspecialchars($user['role'] ?? '', ENT_QUOTES, 'UTF-8'); ?>";
@@ -705,7 +704,7 @@ if (($user['role'] ?? 'customer') !== 'admin') {
         renderRelated();
       } catch (error) {
         elements.productTable.insertAdjacentHTML('beforeend', `<div class="table__row"><span class="text-danger">${error.message}</span></div>`);
-        pushMessage('Nepavyko įkelti duomenų. Patikrinkite prisijungimą ir API nuorodą.', 'error');
+        pushMessage('Nepavyko įkelti duomenų. Patikrinkite prisijungimą arba pabandykite dar kartą.', 'error');
       }
     }
 
