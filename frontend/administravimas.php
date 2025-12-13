@@ -376,7 +376,7 @@ if (($user['role'] ?? 'customer') !== 'admin') {
   </main>
 
   <script>
-    const apiBaseUrl = "<?php echo rtrim(env_value('API_BASE_URL', 'http://localhost:4000'), '/'); ?>";
+    const apiBaseUrl = "api/";
     const params = new URLSearchParams(window.location.search);
     const editingProductId = params.get('productId');
     const adminRole = "<?php echo htmlspecialchars($user['role'] ?? '', ENT_QUOTES, 'UTF-8'); ?>";
@@ -435,9 +435,25 @@ if (($user['role'] ?? 'customer') !== 'admin') {
       return `${num.toFixed(2)} €`;
     }
 
+    function buildApiUrl(path) {
+      const [rawPath, query] = `${path}`.split('?');
+      const segments = rawPath.replace(/^\/+/g, '').split('/').filter(Boolean);
+      const [resource, ...rest] = segments;
+      if (!resource) return apiBaseUrl;
+
+      let url = `${apiBaseUrl}${resource}.php`;
+      if (rest.length) {
+        url += `/${rest.join('/')}`;
+      }
+      if (typeof query === 'string') {
+        url += `?${query}`;
+      }
+      return url;
+    }
+
     async function fetchJson(path, options = {}) {
       const headers = { 'X-Admin-Role': adminRole, ...(options.headers || {}) };
-      const response = await fetch(`${apiBaseUrl}${path}`, { credentials: 'include', ...options, headers });
+      const response = await fetch(buildApiUrl(path), { credentials: 'include', ...options, headers });
       let payload;
       const text = await response.text();
       try {
