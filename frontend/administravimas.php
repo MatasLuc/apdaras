@@ -55,36 +55,22 @@ if (($user['role'] ?? 'customer') !== 'admin') {
           <div class="section__header">
             <p class="badge">Katalogas</p>
             <h3>Produkto ir kategorijų valdymas</h3>
-            <p class="muted">Tvarkykite prekes, kategorijas ir nuotraukas vienoje vietoje. Naujos prekės forma atsidaro atskirame lange, kaip ir redagavimas.</p>
+            <p class="muted">Tvarkykite prekes, kategorijas ir nuotraukas vienoje vietoje. Naujos prekės forma atsidaro atskiram lange, kaip ir redagavimas.</p>
           </div>
 
-          <div class="grid grid--two">
-            <div class="card card--surface">
-              <div class="card__header">
-                <div>
-                  <p class="card__eyebrow">Prieiga</p>
-                  <h4>API žetonas</h4>
-                </div>
+          <div class="collapsible card card--surface is-open" data-section="catalog-summary">
+            <div class="card__header collapsible__header">
+              <div>
+                <p class="card__eyebrow">Katalogas</p>
+                <h4>Greita suvestinė</h4>
               </div>
-              <p class="muted">Vieną kartą įrašykite administratoriaus Bearer žetoną ir naudokite visiems veiksmams (kategorijos, nuotraukos, produktai).</p>
-              <label class="form-field form-field--wide">
-                <span>Bearer žetonas</span>
-                <input type="text" id="admin-token" placeholder="eyJhbGciOi..." />
-              </label>
-              <div class="hint">Redagavimo mygtukai atidaromi naujame lange su įkeltu produktu.</div>
+              <div class="actions">
+                <button class="btn btn--soft" type="button" id="refresh-data">Atnaujinti duomenis</button>
+                <button class="btn btn--primary" type="button" id="open-new-product">Pridėti produktą</button>
+                <button class="btn btn--ghost collapsible__toggle" type="button">Suskleisti</button>
+              </div>
             </div>
-
-            <div class="card card--surface">
-              <div class="card__header">
-                <div>
-                  <p class="card__eyebrow">Katalogas</p>
-                  <h4>Greita suvestinė</h4>
-                </div>
-                <div class="actions">
-                  <button class="btn btn--soft" type="button" id="refresh-data">Atnaujinti duomenis</button>
-                  <button class="btn btn--primary" type="button" id="open-new-product">Pridėti produktą</button>
-                </div>
-              </div>
+            <div class="collapsible__body">
               <div class="table" id="product-table" aria-live="polite">
                 <div class="table__row table__row--head">
                   <span>Pavadinimas</span>
@@ -96,14 +82,15 @@ if (($user['role'] ?? 'customer') !== 'admin') {
             </div>
           </div>
 
-          <div class="grid grid--two">
-            <div class="card card--surface">
-              <div class="card__header">
-                <div>
-                  <p class="card__eyebrow">Kategorijų valdymas</p>
-                  <h4>Kategorijos ir subkategorijos</h4>
-                </div>
+          <div class="collapsible card card--surface is-open" data-section="category-management">
+            <div class="card__header collapsible__header">
+              <div>
+                <p class="card__eyebrow">Kategorijų valdymas</p>
+                <h4>Kategorijos ir subkategorijos</h4>
               </div>
+              <button class="btn btn--ghost collapsible__toggle" type="button">Suskleisti</button>
+            </div>
+            <div class="collapsible__body">
               <div class="stack" id="category-manager">
                 <form id="category-form" class="form-grid">
                   <label class="form-field">
@@ -136,182 +123,202 @@ if (($user['role'] ?? 'customer') !== 'admin') {
                 <div id="category-list" class="stack stack--spacious"></div>
               </div>
             </div>
-
-            <div class="card card--surface">
-              <div class="card__header">
-                <div>
-                  <p class="card__eyebrow">Produktų forma</p>
-                  <h4>Įrašas naujame lange</h4>
-                </div>
-                <div class="pill">Formos tabas</div>
-              </div>
-              <p class="muted">Norėdami kurti ar redaguoti, atidarykite formą naujame lange. Laukai automatiškai užsipildo pasirinktam produktui.</p>
-              <button class="btn btn--primary" type="button" id="open-editor">Atverti formą</button>
-            </div>
           </div>
 
-          <div class="grid grid--two" id="product-editor">
-            <form id="product-form" class="card card--surface">
-              <div class="card__header">
-                <div>
-                  <p class="card__eyebrow">Pagrindinė informacija</p>
-                  <h4 id="form-title">Pridėti naują produktą</h4>
-                </div>
-                <button class="btn btn--primary" type="submit">Išsaugoti produktą</button>
+          <div class="collapsible card card--surface is-open" data-section="product-editor">
+            <div class="card__header collapsible__header">
+              <div>
+                <p class="card__eyebrow">Produktų forma</p>
+                <h4 id="form-title">Pridėti naują produktą</h4>
               </div>
-
-              <div class="form-grid">
-                <label class="form-field">
-                  <span>Pavadinimas</span>
-                  <input type="text" name="title" required />
-                </label>
-                <label class="form-field">
-                  <span>Paantraštė</span>
-                  <input type="text" name="subtitle" placeholder="Trumpa žinutė po pavadinimu" />
-                </label>
-                <label class="form-field">
-                  <span>Juostelė</span>
-                  <input type="text" name="ribbon" placeholder="Pvz., Nauja, Top pasirinkimas" />
-                </label>
-                <label class="form-field">
-                  <span>Žymės</span>
-                  <input type="text" name="tags" placeholder="Žymos, atskirtos kableliais" />
-                </label>
-                <label class="form-field form-field--wide">
-                  <span>Paantraštė (santrauka)</span>
-                  <textarea name="summary" rows="2"></textarea>
-                </label>
-                <label class="form-field form-field--wide">
-                  <span>Aprašymas</span>
-                  <textarea name="description" rows="4"></textarea>
-                </label>
+              <div class="actions">
+                <button class="btn btn--primary" type="submit" form="product-form">Išsaugoti produktą</button>
+                <button class="btn btn--ghost collapsible__toggle" type="button">Suskleisti</button>
               </div>
-
-              <div class="form-grid">
-                <label class="form-field">
-                  <span>Kaina (€)</span>
-                  <input type="number" name="price" min="0" step="0.01" required />
-                </label>
-                <label class="form-field">
-                  <span>Kaina su nuolaida (€)</span>
-                  <input type="number" name="discount_price" min="0" step="0.01" />
-                </label>
-                <label class="form-field">
-                  <span>Svoris (kg)</span>
-                  <input type="number" name="weight_kg" min="0" step="0.001" />
-                </label>
-                <label class="form-field">
-                  <span>Likutis</span>
-                  <input type="number" name="stock" min="0" step="1" value="0" />
-                </label>
-              </div>
-
-              <div class="form-grid">
-                <label class="form-field">
-                  <span>Galimybė personalizuoti</span>
-                  <select name="allow_personalization">
-                    <option value="0">Ne</option>
-                    <option value="1">Taip</option>
-                  </select>
-                </label>
-                <label class="form-field">
-                  <span>API Bearer žetonas</span>
-                  <input type="text" name="token" id="form-token" placeholder="Įveskite jei siunčiate į API" />
-                </label>
-              </div>
-
-              <div class="divider"></div>
-
-              <div class="form-section">
-                <div class="form-section__header">
-                  <div>
-                    <p class="card__eyebrow">Nuotraukos</p>
-                    <h4>Pagrindinė ir papildomos</h4>
-                  </div>
-                  <div class="actions">
-                    <input type="url" id="image-url" placeholder="https://..." />
-                    <label class="checkbox">
-                      <input type="checkbox" id="image-primary" />
-                      <span>Pagrindinė</span>
-                    </label>
-                    <button class="btn" type="button" id="add-image">Pridėti nuorodą</button>
-                  </div>
-                </div>
-                <div class="upload">
-                  <label class="upload__drop">
-                    <input type="file" id="image-upload" multiple accept="image/*" />
-                    <div>
-                      <p class="card__eyebrow">Įkelti failus</p>
-                      <p>Nutempkite arba pasirinkite kelias nuotraukas – jos bus patalpintos į „upload“ katalogą.</p>
+            </div>
+            <div class="collapsible__body">
+              <div class="form-panels">
+                <form id="product-form" class="panel panel--form">
+                  <div class="collapsible form-section is-open">
+                    <div class="form-section__header collapsible__header">
+                      <div>
+                        <p class="card__eyebrow">Pagrindinė informacija</p>
+                        <h4>Turinys ir kaina</h4>
+                      </div>
+                      <button class="btn btn--ghost collapsible__toggle" type="button">Suskleisti</button>
                     </div>
-                  </label>
-                </div>
-                <div id="image-list" class="chip-list" aria-live="polite"></div>
-              </div>
+                    <div class="form-section__body collapsible__body">
+                      <div class="form-grid">
+                        <label class="form-field">
+                          <span>Pavadinimas</span>
+                          <input type="text" name="title" required />
+                        </label>
+                        <label class="form-field">
+                          <span>Paantraštė</span>
+                          <input type="text" name="subtitle" placeholder="Trumpa žinutė po pavadinimu" />
+                        </label>
+                        <label class="form-field">
+                          <span>Juostelė</span>
+                          <input type="text" name="ribbon" placeholder="Pvz., Nauja, Top pasirinkimas" />
+                        </label>
+                        <label class="form-field">
+                          <span>Žymės</span>
+                          <input type="text" name="tags" placeholder="Žymos, atskirtos kableliais" />
+                        </label>
+                        <label class="form-field form-field--wide">
+                          <span>Paantraštė (santrauka)</span>
+                          <textarea name="summary" rows="2"></textarea>
+                        </label>
+                        <label class="form-field form-field--wide">
+                          <span>Aprašymas</span>
+                          <textarea name="description" rows="4"></textarea>
+                        </label>
+                      </div>
 
-              <div class="form-section">
-                <div class="form-section__header">
-                  <div>
-                    <p class="card__eyebrow">Kategorijos</p>
-                    <h4>Pagrindinės ir subkategorijos</h4>
-                  </div>
-                </div>
-                <div id="category-select" class="grid grid--two"></div>
-              </div>
+                      <div class="form-grid">
+                        <label class="form-field">
+                          <span>Kaina (€)</span>
+                          <input type="number" name="price" min="0" step="0.01" required />
+                        </label>
+                        <label class="form-field">
+                          <span>Kaina su nuolaida (€)</span>
+                          <input type="number" name="discount_price" min="0" step="0.01" />
+                        </label>
+                        <label class="form-field">
+                          <span>Svoris (kg)</span>
+                          <input type="number" name="weight_kg" min="0" step="0.001" />
+                        </label>
+                        <label class="form-field">
+                          <span>Likutis</span>
+                          <input type="number" name="stock" min="0" step="1" value="0" />
+                        </label>
+                      </div>
 
-              <div class="form-section">
-                <div class="form-section__header">
-                  <div>
-                    <p class="card__eyebrow">Variacijos</p>
-                    <h4>Spalvos, dydžiai ir kiti pasirinkimai</h4>
+                      <div class="form-grid">
+                        <label class="form-field">
+                          <span>Galimybė personalizuoti</span>
+                          <select name="allow_personalization">
+                            <option value="0">Ne</option>
+                            <option value="1">Taip</option>
+                          </select>
+                        </label>
+                        <label class="form-field">
+                          <span>API Bearer žetonas</span>
+                          <input type="text" name="token" id="form-token" placeholder="Įveskite jei siunčiate į API" />
+                        </label>
+                      </div>
+                    </div>
                   </div>
-                  <div class="actions">
-                    <input type="text" id="new-variation-value" placeholder="Nauja variacijos reikšmė" />
-                    <select id="new-variation-attribute"></select>
-                    <button class="btn" type="button" id="add-variation-value">Pridėti reikšmę</button>
-                  </div>
-                </div>
-                <div id="variation-list" class="grid grid--two"></div>
-              </div>
 
-              <div class="form-section">
-                <div class="form-section__header">
-                  <div>
-                    <p class="card__eyebrow">Susiję produktai</p>
-                    <h4>Pasirinkite iš katalogo</h4>
+                  <div class="collapsible form-section is-open">
+                    <div class="form-section__header collapsible__header">
+                      <div>
+                        <p class="card__eyebrow">Nuotraukos</p>
+                        <h4>Pagrindinė ir papildomos</h4>
+                      </div>
+                      <div class="actions">
+                        <button class="btn btn--ghost collapsible__toggle" type="button">Suskleisti</button>
+                      </div>
+                    </div>
+                    <div class="form-section__body collapsible__body">
+                      <div class="actions actions--wrap">
+                        <input type="url" id="image-url" placeholder="https://..." />
+                        <label class="checkbox">
+                          <input type="checkbox" id="image-primary" />
+                          <span>Pagrindinė</span>
+                        </label>
+                        <button class="btn" type="button" id="add-image">Pridėti nuorodą</button>
+                      </div>
+                      <div class="upload">
+                        <label class="upload__drop">
+                          <input type="file" id="image-upload" multiple accept="image/*" />
+                          <div>
+                            <p class="card__eyebrow">Įkelti failus</p>
+                            <p>Nutempkite arba pasirinkite kelias nuotraukas – jos bus patalpintos į „upload“ katalogą.</p>
+                          </div>
+                        </label>
+                      </div>
+                      <div id="image-list" class="chip-list" aria-live="polite"></div>
+                    </div>
                   </div>
-                  <div class="actions">
-                    <input type="search" id="related-search" placeholder="Paieška pagal pavadinimą" />
-                  </div>
-                </div>
-                <div class="grid grid--two">
-                  <div>
-                    <p class="muted">Rezultatai</p>
-                    <div id="related-results" class="list"></div>
-                  </div>
-                  <div>
-                    <p class="muted">Pasirinkta</p>
-                    <div id="related-selected" class="chip-list"></div>
-                  </div>
-                </div>
-              </div>
-            </form>
 
-            <aside class="card card--surface">
-              <div class="card__header">
-                <div>
-                  <p class="card__eyebrow">Peržiūra</p>
-                  <h4>Paruošta siuntimui</h4>
-                </div>
+                  <div class="collapsible form-section is-open">
+                    <div class="form-section__header collapsible__header">
+                      <div>
+                        <p class="card__eyebrow">Kategorijos</p>
+                        <h4>Pagrindinės ir subkategorijos</h4>
+                      </div>
+                      <button class="btn btn--ghost collapsible__toggle" type="button">Suskleisti</button>
+                    </div>
+                    <div class="form-section__body collapsible__body">
+                      <div id="category-select" class="grid grid--two"></div>
+                    </div>
+                  </div>
+
+                  <div class="collapsible form-section is-open">
+                    <div class="form-section__header collapsible__header">
+                      <div>
+                        <p class="card__eyebrow">Variacijos</p>
+                        <h4>Spalvos, dydžiai ir kiti pasirinkimai</h4>
+                      </div>
+                      <div class="actions">
+                        <input type="text" id="new-variation-value" placeholder="Nauja variacijos reikšmė" />
+                        <select id="new-variation-attribute"></select>
+                        <button class="btn" type="button" id="add-variation-value">Pridėti reikšmę</button>
+                        <button class="btn btn--ghost collapsible__toggle" type="button">Suskleisti</button>
+                      </div>
+                    </div>
+                    <div class="form-section__body collapsible__body">
+                      <div id="variation-list" class="grid grid--two"></div>
+                    </div>
+                  </div>
+
+                  <div class="collapsible form-section is-open">
+                    <div class="form-section__header collapsible__header">
+                      <div>
+                        <p class="card__eyebrow">Susiję produktai</p>
+                        <h4>Pasirinkite iš katalogo</h4>
+                      </div>
+                      <div class="actions">
+                        <input type="search" id="related-search" placeholder="Paieška pagal pavadinimą" />
+                        <button class="btn btn--ghost collapsible__toggle" type="button">Suskleisti</button>
+                      </div>
+                    </div>
+                    <div class="form-section__body collapsible__body">
+                      <div class="grid grid--two">
+                        <div>
+                          <p class="muted">Rezultatai</p>
+                          <div id="related-results" class="list"></div>
+                        </div>
+                        <div>
+                          <p class="muted">Pasirinkta</p>
+                          <div id="related-selected" class="chip-list"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="form-actions">
+                    <button class="btn btn--primary" type="submit">Išsaugoti produktą</button>
+                  </div>
+                </form>
+
+                <aside class="panel panel--preview">
+                  <div class="form-section__header">
+                    <div>
+                      <p class="card__eyebrow">Peržiūra</p>
+                      <h4>Paruošta siuntimui</h4>
+                    </div>
+                  </div>
+                  <div id="product-preview" class="stack" aria-live="polite">
+                    <p class="muted">Užpildykite formą kairėje, kad pamatytumėte suformuotą objekto santrauką.</p>
+                  </div>
+                </aside>
               </div>
-              <div id="product-preview" class="stack" aria-live="polite">
-                <p class="muted">Užpildykite formą kairėje, kad pamatytumėte suformuotą objekto santrauką.</p>
-              </div>
-            </aside>
+            </div>
           </div>
         </div>
       </div>
-
       <div class="tab-panel" id="tab-account">
         <div class="card card--surface">
           <div class="card__header">
@@ -357,12 +364,29 @@ if (($user['role'] ?? 'customer') !== 'admin') {
       preview: document.getElementById('product-preview'),
       form: document.getElementById('product-form'),
       formTitle: document.getElementById('form-title'),
-      adminToken: document.getElementById('admin-token'),
       formToken: document.getElementById('form-token')
     };
 
     function getToken() {
-      return (elements.adminToken.value || elements.formToken.value || '').trim();
+      return (elements.formToken.value || '').trim();
+    }
+
+    function setupCollapsibles() {
+      document.querySelectorAll('.collapsible').forEach((section) => {
+        const body = section.querySelector('.collapsible__body');
+        const toggle = section.querySelector('.collapsible__toggle');
+        if (!body || !toggle) return;
+        const sync = () => {
+          const open = section.classList.contains('is-open');
+          body.style.display = open ? '' : 'none';
+          toggle.textContent = open ? 'Suskleisti' : 'Išskleisti';
+        };
+        sync();
+        toggle.addEventListener('click', () => {
+          section.classList.toggle('is-open');
+          sync();
+        });
+      });
     }
 
     function formatCurrency(value) {
@@ -666,7 +690,7 @@ if (($user['role'] ?? 'customer') !== 'admin') {
     async function upsertCategory(formData, isSubcategory = false) {
       const token = getToken();
       if (!token) {
-        alert('Įveskite Bearer žetoną prieigos kortelėje.');
+        alert('Įveskite Bearer žetoną produkto formoje.');
         return;
       }
       const payload = Object.fromEntries(formData.entries());
@@ -949,11 +973,9 @@ if (($user['role'] ?? 'customer') !== 'admin') {
     document.getElementById('open-new-product').addEventListener('click', () => {
       window.open('administravimas.php#product-editor', '_blank');
     });
-    document.getElementById('open-editor').addEventListener('click', () => {
-      window.open('administravimas.php#product-editor', '_blank');
-    });
 
     renderTabs();
+    setupCollapsibles();
     renderImages();
     loadCollections().then(() => {
       if (editingProductId) {
