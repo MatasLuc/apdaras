@@ -20,11 +20,9 @@ function parse_path_segments(): array
     $path = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '';
     $scriptName = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
     
-    // Jei kelias prasideda pilnu skripto pavadinimu (pvz., /api/categories.php), pašaliname jį visą
     if (str_starts_with($path, $scriptName)) {
         $path = substr($path, strlen($scriptName));
     } else {
-        // Kitu atveju šaliname tik aplanką (jei naudojamas URL perrašymas)
         $scriptDir = rtrim(dirname($scriptName), '/');
         if ($scriptDir !== '' && $scriptDir !== '/' && str_starts_with($path, $scriptDir)) {
             $path = substr($path, strlen($scriptDir));
