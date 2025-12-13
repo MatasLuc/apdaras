@@ -1,5 +1,5 @@
 <?php
-// cart.php - MySQL paremtas krepšelis ir katalogo funkcijos
+// cart.php - MySQL krepšelis ir katalogas
 
 declare(strict_types=1);
 
@@ -11,7 +11,7 @@ function ensure_cart_initialized(): void
     ensure_session();
 }
 
-// --- Katalogo atvaizdavimo funkcijos ---
+// --- Katalogo funkcijos (kad veiktų parduotuvė) ---
 
 function format_product_categories(?string $raw): array
 {
@@ -41,7 +41,7 @@ function cart_catalog(): array
             LEFT JOIN product_categories pc ON pc.product_id = p.id
             LEFT JOIN categories c ON pc.category_id = c.id
             GROUP BY p.id
-            ORDER BY p.id DESC";
+            ORDER BY p.id DESC"; // Rikiuojame pagal ID
 
     $stmt = $pdo->query($sql);
     $products = $stmt ? $stmt->fetchAll() : [];
@@ -78,7 +78,7 @@ function cart_catalog(): array
     return $cachedCatalog;
 }
 
-// --- Krepšelio funkcijos (MySQL) ---
+// --- Krepšelio funkcijos ---
 
 function get_active_cart_id(PDO $pdo): int
 {
@@ -110,6 +110,7 @@ function cart_items(): array
     $pdo = get_db_connection();
     $cartId = get_active_cart_id($pdo);
 
+    // Naudojame ci.id DESC, kad išvengtume klaidų jei nėra created_at
     $sql = "
         SELECT ci.id as item_id, ci.quantity, ci.variation_id,
                p.id as product_id, p.title as name, p.price, p.discount_price, p.stock,
@@ -138,7 +139,6 @@ function cart_items(): array
             'qty' => (int)$row['quantity'],
             'variation_id' => $row['variation_id'],
             'variation_text' => $row['variation_name'] ? "{$row['attribute_name']}: {$row['variation_name']}" : null,
-            'category' => 'Prekė',
             'stock' => (int)$row['stock']
         ];
     }
@@ -170,6 +170,7 @@ function add_cart_item(string $productId, int $quantity = 1, ?int $variationId =
         $stmtUpd = $pdo->prepare("UPDATE cart_items SET quantity = ? WHERE id = ?");
         return $stmtUpd->execute([$newQty, $existing['id']]);
     } else {
+        // Įterpiame be user_id, nes jis yra carts lentelėje
         $stmtIns = $pdo->prepare("INSERT INTO cart_items (cart_id, product_id, variation_id, quantity) VALUES (?, ?, ?, ?)");
         return $stmtIns->execute([$cartId, $productId, $variationId, $quantity]);
     }
@@ -221,21 +222,16 @@ function cart_subtotal(): float
     return $total;
 }
 
-// PAKEITIMAS: Grąžina 0, jei krepšelis tuščias
+// PATAISYMAS: Jei nėra prekių, nėra ir mokesčio
 function cart_shipping_fee(): float
 {
-    if (cart_count() === 0) {
-        return 0.0;
-    }
+    if (cart_count() === 0) return 0.0;
     return cart_subtotal() > 70 ? 0.0 : 4.90;
 }
 
 function cart_total(): float
 {
-    // Jei nėra prekių, nėra ir pristatymo mokesčio
-    if (cart_count() === 0) {
-        return 0.0;
-    }
+    if (cart_count() === 0) return 0.0;
     return cart_subtotal() + cart_shipping_fee();
 }
 
