@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
         relatedIds: new Set(),
         editingId: null,
         orders: [],
-        customOrders: [] // Naujas masyvas individualiems
+        customOrders: []
     };
 
     const elements = {
@@ -39,7 +39,6 @@ document.addEventListener('DOMContentLoaded', () => {
         openNewProductBtn: document.getElementById('open-new-product'),
         ordersTable: document.getElementById('orders-table'),
         refreshOrdersBtn: document.getElementById('refresh-orders'),
-        // Nauji elementai
         customOrdersList: document.getElementById('custom-orders-list'),
         refreshCustomOrdersBtn: document.getElementById('refresh-custom-orders')
     };
@@ -159,7 +158,6 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadCustomOrders() {
         if (!elements.customOrdersList) return;
         try {
-            // Naudojame tą patį endpointą su filtru
             const orders = await fetchJson('/orders?custom_only=1');
             state.customOrders = orders;
             renderCustomOrders();
@@ -176,7 +174,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         state.customOrders.forEach(order => {
-            // Randame tik custom prekes
             const customItems = (order.items || []).filter(item => item.personalization_data);
             
             const card = document.createElement('div');
@@ -188,10 +185,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 try { persData = JSON.parse(item.personalization_data); } catch(e) {}
                 
                 const imgSrc = persData.snapshotUrl ? persData.snapshotUrl : '';
+                const pdfSrc = persData.printPdfUrl ? persData.printPdfUrl : '';
+                
                 const thumbHtml = imgSrc 
                     ? `<a href="${imgSrc}" target="_blank"><img src="${imgSrc}" class="custom-order-thumb" alt="Dizainas"></a>` 
                     : '<div class="custom-order-thumb" style="display:flex;align-items:center;justify-content:center;">Nėra foto</div>';
                 
+                const pdfLink = pdfSrc
+                    ? `<div style="margin-top:6px;"><a href="${pdfSrc}" download class="btn btn--soft" style="padding:6px 10px; font-size:12px;">📄 Atsisiųsti PDF spaudai</a></div>`
+                    : '';
+
                 itemsHtml += `
                     <div class="custom-order-preview">
                         ${thumbHtml}
@@ -200,7 +203,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             <p>Variacija: ${item.variation_info || '-'}</p>
                             <p>Tekstas: <strong>${persData.text || '-'}</strong></p>
                             <p>Šriftas: ${persData.fontFamily || '-'}</p>
-                            <p>Spalva: <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${persData.color};border:1px solid #ccc;"></span> ${persData.color}</p>
+                            <p>Spalva: ${persData.color || '-'}</p>
+                            ${pdfLink}
                         </div>
                     </div>
                 `;
@@ -227,13 +231,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Funkcija statuso atnaujinimui (prieinama globaliai, nes kviečiama iš onchange)
     window.updateOrderStatus = async function(selectElement, orderId) {
         const newStatus = selectElement.value;
         const originalStatus = selectElement.getAttribute('data-original');
 
         if (!confirm(`Ar tikrai norite pakeisti užsakymo #${orderId} būseną į "${newStatus}"?`)) {
-            selectElement.value = originalStatus; // Atstatome, jei atšaukė
+            selectElement.value = originalStatus;
             return;
         }
 
@@ -246,7 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             selectElement.setAttribute('data-original', newStatus);
             pushMessage(`Užsakymas #${orderId} atnaujintas`, 'success');
-            loadOrders(); // Perkrauname duomenis
+            loadOrders();
         } catch (e) {
             alert('Nepavyko atnaujinti: ' + e.message);
             selectElement.value = originalStatus;
@@ -267,7 +270,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const date = new Date(order.created_at).toLocaleString('lt-LT');
             const itemsSummary = (order.items || []).map(i => `${i.product_name} (${i.quantity} vnt.)`).join(', ');
 
-            // Generuojame select'ą
             let statusOptions = '';
             for (const [key, label] of Object.entries(statusMap)) {
                 const selected = order.status === key ? 'selected' : '';
@@ -297,7 +299,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- PRODUKTAI ---
     window.startEditProduct = async function(id) {
         try {
             await loadProduct(id);
