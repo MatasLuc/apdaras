@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { getPool } from '../db.js';
 
 const router = express.Router();
+const JWT_SECRET = process.env.JWT_SECRET || 'development-secret';
 
 router.post('/register', async (req, res) => {
   const db = getPool();
@@ -44,7 +45,7 @@ router.post('/login', async (req, res) => {
     return res.status(401).json({ message: 'Invalid credentials' });
   }
 
-  const token = jwt.sign({ id: user.id, role: user.role, email, name: user.name }, process.env.JWT_SECRET, {
+  const token = jwt.sign({ id: user.id, role: user.role, email, name: user.name }, JWT_SECRET, {
     expiresIn: '7d'
   });
   return res.json({ token });
