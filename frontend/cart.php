@@ -6,6 +6,14 @@ declare(strict_types=1);
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/db.php';
 
+// Ši funkcija reikalinga suderinamumui su nav.php
+function ensure_cart_initialized(): void
+{
+    ensure_session();
+    // Duomenų bazės versijoje krepšelis inicializuojamas 'on-the-fly', 
+    // tad čia papildomų veiksmų nereikia, bet funkcija turi egzistuoti.
+}
+
 // --- Pagalbinė funkcija gauti aktyviam krepšeliui ---
 function get_active_cart_id(PDO $pdo): int
 {
@@ -116,7 +124,6 @@ function update_cart_item(int $itemId, int $quantity): void
         remove_cart_item($itemId);
         return;
     }
-    // Saugumo dėlei reiktų tikrinti ar item priklauso active_cart_id, bet supaprastinam
     $stmt = $pdo->prepare("UPDATE cart_items SET quantity = ? WHERE id = ?");
     $stmt->execute([$quantity, $itemId]);
 }
@@ -158,7 +165,6 @@ function cart_subtotal(): float
 
 function cart_shipping_fee(): float
 {
-    // Paprasta logika: nemokamai virš 70, kitaip 4.90
     return cart_subtotal() > 70 ? 0.0 : 4.90;
 }
 
@@ -185,7 +191,6 @@ function create_order_from_cart(array $guestInfo = []): ?int
     try {
         $pdo->beginTransaction();
 
-        // 1. Sukuriame užsakymą
         $stmtOrder = $pdo->prepare("
             INSERT INTO orders (user_id, guest_name, guest_email, guest_address, total_price, status)
             VALUES (?, ?, ?, ?, ?, 'new')
@@ -199,7 +204,6 @@ function create_order_from_cart(array $guestInfo = []): ?int
         ]);
         $orderId = (int)$pdo->lastInsertId();
 
-        // 2. Perkeliame prekes į order_items
         $stmtItem = $pdo->prepare("
             INSERT INTO order_items (order_id, product_id, product_name, variation_info, quantity, price)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -215,12 +219,10 @@ function create_order_from_cart(array $guestInfo = []): ?int
                 $item['price']
             ]);
             
-            // Čia reiktų mažinti stock kiekį products lentelėje
             $stmtStock = $pdo->prepare("UPDATE products SET stock = GREATEST(0, stock - ?) WHERE id = ?");
             $stmtStock->execute([$item['qty'], $item['id']]);
         }
 
-        // 3. Išvalome krepšelį
         $pdo->prepare("DELETE FROM cart_items WHERE cart_id = ?")->execute([$cartId]);
 
         $pdo->commit();
