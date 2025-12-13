@@ -10,8 +10,6 @@ require_once __DIR__ . '/db.php';
 function ensure_cart_initialized(): void
 {
     ensure_session();
-    // Duomenų bazės versijoje krepšelis inicializuojamas 'on-the-fly', 
-    // tad čia papildomų veiksmų nereikia, bet funkcija turi egzistuoti.
 }
 
 // --- Pagalbinė funkcija gauti aktyviam krepšeliui ---
@@ -49,6 +47,7 @@ function cart_items(): array
     $pdo = get_db_connection();
     $cartId = get_active_cart_id($pdo);
 
+    // PAKEITIMAS: Pakeista ORDER BY į ci.id DESC, kad nereikalautų created_at stulpelio
     $sql = "
         SELECT ci.id as item_id, ci.quantity, ci.variation_id,
                p.id as product_id, p.title as name, p.price, p.discount_price, p.stock,
@@ -58,7 +57,7 @@ function cart_items(): array
         FROM cart_items ci
         JOIN products p ON ci.product_id = p.id
         WHERE ci.cart_id = ?
-        ORDER BY ci.created_at DESC
+        ORDER BY ci.id DESC
     ";
 
     $stmt = $pdo->prepare($sql);
@@ -69,7 +68,7 @@ function cart_items(): array
     foreach ($rows as $row) {
         $price = $row['discount_price'] ?: $row['price'];
         $items[] = [
-            'item_id' => $row['item_id'], // DB įrašo ID (trynimui)
+            'item_id' => $row['item_id'],
             'id' => $row['product_id'],
             'name' => $row['name'],
             'image_url' => $row['image_url'],
@@ -107,7 +106,6 @@ function add_cart_item(string $productId, int $quantity = 1, ?int $variationId =
     if ($existing) {
         // Atnaujiname kiekį
         $newQty = $existing['quantity'] + $quantity;
-        // Čia reiktų patikrinti stock, bet supaprastinimui praleidžiu
         $stmtUpd = $pdo->prepare("UPDATE cart_items SET quantity = ? WHERE id = ?");
         return $stmtUpd->execute([$newQty, $existing['id']]);
     } else {
@@ -172,8 +170,6 @@ function cart_total(): float
 {
     return cart_subtotal() + cart_shipping_fee();
 }
-
-// --- Užsakymo sukūrimas ---
 
 function create_order_from_cart(array $guestInfo = []): ?int
 {
