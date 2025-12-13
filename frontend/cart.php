@@ -4,11 +4,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/auth.php';
-
-function api_base_url(): string
-{
-    return rtrim(getenv('API_BASE_URL') ?: 'http://localhost:4000', '/');
-}
+require_once __DIR__ . '/db.php';
 
 function format_product_categories(?string $raw): array
 {
@@ -37,35 +33,22 @@ function cart_catalog(): array
         return $cachedCatalog;
     }
 
-    $url = api_base_url() . '/products';
+    $pdo = get_db_connection();
 
-    if (!function_exists('curl_init')) {
-        $cachedCatalog = [];
-        return $cachedCatalog;
-    }
+    $stmt = $pdo->query(
+        "SELECT p.id, p.title, p.price, p.discount_price, p.stock, p.ribbon, p.tags, p.summary, p.subtitle,\n" .
+        "       GROUP_CONCAT(DISTINCT CONCAT(c.id, ':', c.name) ORDER BY c.name SEPARATOR '|') AS categories\n" .
+        "FROM products p\n" .
+        "LEFT JOIN product_categories pc ON pc.product_id = p.id\n" .
+        "LEFT JOIN categories c ON pc.category_id = c.id\n" .
+        "GROUP BY p.id\n" .
+        "ORDER BY p.created_at DESC"
+    );
 
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
-
-    $response = curl_exec($ch);
-    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($response === false || ($status && $status >= 400)) {
-        $cachedCatalog = [];
-        return $cachedCatalog;
-    }
-
-    $decoded = json_decode($response, true);
-    if (!is_array($decoded)) {
-        $cachedCatalog = [];
-        return $cachedCatalog;
-    }
-
+    $products = $stmt ? $stmt->fetchAll() : [];
     $catalog = [];
 
-    foreach ($decoded as $product) {
+    foreach ($products as $product) {
         if (!isset($product['id'], $product['title'], $product['price'])) {
             continue;
         }
