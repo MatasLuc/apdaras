@@ -146,17 +146,28 @@ function cart_items(): array
     foreach ($rows as $row) {
         $price = $row['discount_price'] ?: $row['price'];
         
+        // Personalizacijos duomenų apdorojimas
         $persData = $row['personalization_data'] ? json_decode($row['personalization_data'], true) : null;
         $persText = null;
-        if ($persData && !empty($persData['text'])) {
-             $persText = "Personalizuota: \"{$persData['text']}\"";
+        
+        // Pagrindinė nuotrauka
+        $displayImage = $row['image_url'];
+
+        if ($persData) {
+            if (!empty($persData['text'])) {
+                $persText = "Personalizuota: \"{$persData['text']}\"";
+            }
+            // Svarbu: Jei turime sugeneruotą snapshot'ą, rodome jį vietoje paprastos nuotraukos
+            if (!empty($persData['snapshotUrl'])) {
+                $displayImage = $persData['snapshotUrl'];
+            }
         }
 
         $items[] = [
             'item_id' => $row['item_id'],
             'id' => $row['product_id'],
             'name' => $row['name'],
-            'image_url' => $row['image_url'],
+            'image_url' => $displayImage, // Čia jau bus snapshot'as, jei jis yra
             'price' => (float)$price,
             'qty' => (int)$row['quantity'],
             'variation_id' => $row['variation_id'],
@@ -175,13 +186,11 @@ function add_cart_item(string $productId, int $quantity = 1, ?int $variationId =
     $pdo = get_db_connection();
     $cartId = get_active_cart_id($pdo);
     
-    // Jei prekė personalizuota, visada kuriame naują įrašą (nedidiname kiekio), kad nesusimaišytų skirtingi užrašai
     if ($personalizationData) {
         $stmtIns = $pdo->prepare("INSERT INTO cart_items (cart_id, product_id, variation_id, quantity, personalization_data) VALUES (?, ?, ?, ?, ?)");
         return $stmtIns->execute([$cartId, $productId, $variationId, $quantity, $personalizationData]);
     }
     
-    // Standartinė logika nepersonalizuotoms prekėms
     $sqlCheck = "SELECT id, quantity FROM cart_items WHERE cart_id = ? AND product_id = ? AND personalization_data IS NULL";
     $params = [$cartId, $productId];
     
@@ -269,7 +278,7 @@ function create_order_from_cart(array $guestInfo = []): ?int
     $pdo = get_db_connection();
     $cartId = get_active_cart_id($pdo);
     
-    // Gauname raw items, kad turėtume personalization_data
+    // Gauname raw items
     $rawItemsStmt = $pdo->prepare("SELECT * FROM cart_items WHERE cart_id = ?");
     $rawItemsStmt->execute([$cartId]);
     $items = $rawItemsStmt->fetchAll();
@@ -278,7 +287,6 @@ function create_order_from_cart(array $guestInfo = []): ?int
         return null;
     }
     
-    // Paskaičiuojam sumą (šiek tiek dubliuojasi su cart_total, bet saugiau)
     $totalPrice = cart_total();
     $userId = $_SESSION['user_id'] ?? null;
 
@@ -304,7 +312,6 @@ function create_order_from_cart(array $guestInfo = []): ?int
         ");
 
         foreach ($items as $item) {
-             // Gauname papildomą info apie produktą
              $pStmt = $pdo->prepare("SELECT title, price, discount_price FROM products WHERE id = ?");
              $pStmt->execute([$item['product_id']]);
              $prod = $pStmt->fetch();
