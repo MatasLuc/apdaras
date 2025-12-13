@@ -1,7 +1,12 @@
 <?php
-// db.php - Database connection and automatic table creation
+// db.php - Prisijungimas ir automatinis lentelių kūrimas
 
 declare(strict_types=1);
+
+// Įjungiame klaidų rodymą, kol viskas veiks stabiliai
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
 
 function load_env_from_file(): void
 {
@@ -59,8 +64,7 @@ function get_db_connection(): PDO
             ]
         );
     } catch (PDOException $e) {
-        // Jei nepavyksta prisijungti, rodome klaidą
-        die('Nepavyko prisijungti prie duomenų bazės. Patikrinkite nustatymus.');
+        die('<h1>DB Klaida:</h1> ' . $e->getMessage());
     }
 
     // Automatiškai užtikriname, kad lentelės egzistuoja
@@ -72,6 +76,7 @@ function get_db_connection(): PDO
 function ensure_all_tables(PDO $pdo): void
 {
     $queries = [
+        // 1. Users
         "CREATE TABLE IF NOT EXISTS users (
             id INT AUTO_INCREMENT PRIMARY KEY,
             email VARCHAR(255) NOT NULL UNIQUE,
@@ -85,6 +90,7 @@ function ensure_all_tables(PDO $pdo): void
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
 
+        // 2. Categories
         "CREATE TABLE IF NOT EXISTS categories (
             id INT AUTO_INCREMENT PRIMARY KEY,
             name VARCHAR(255) NOT NULL,
@@ -92,6 +98,7 @@ function ensure_all_tables(PDO $pdo): void
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
 
+        // 3. Subcategories
         "CREATE TABLE IF NOT EXISTS subcategories (
             id INT AUTO_INCREMENT PRIMARY KEY,
             category_id INT NOT NULL,
@@ -101,6 +108,7 @@ function ensure_all_tables(PDO $pdo): void
             FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
 
+        // 4. Products
         "CREATE TABLE IF NOT EXISTS products (
             id INT AUTO_INCREMENT PRIMARY KEY,
             title VARCHAR(255) NOT NULL,
@@ -120,6 +128,7 @@ function ensure_all_tables(PDO $pdo): void
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
 
+        // 5-7. Product Relations
         "CREATE TABLE IF NOT EXISTS product_categories (
             product_id INT NOT NULL,
             category_id INT NOT NULL,
@@ -144,6 +153,7 @@ function ensure_all_tables(PDO $pdo): void
             FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
 
+        // 8-10. Variations
         "CREATE TABLE IF NOT EXISTS variation_attributes (
             id INT AUTO_INCREMENT PRIMARY KEY,
             name VARCHAR(100) NOT NULL
@@ -172,6 +182,7 @@ function ensure_all_tables(PDO $pdo): void
             FOREIGN KEY (related_product_id) REFERENCES products(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
 
+        // 11-14. Carts & Orders
         "CREATE TABLE IF NOT EXISTS carts (
             id INT AUTO_INCREMENT PRIMARY KEY,
             session_id VARCHAR(255) NOT NULL,
@@ -234,7 +245,22 @@ function ensure_all_tables(PDO $pdo): void
     ];
 
     foreach ($queries as $query) {
-        $pdo->exec($query);
+        try {
+            $pdo->exec($query);
+        } catch (PDOException $e) {
+            die("<h1>Lentelės kūrimo klaida</h1><p>Nepavyko įvykdyti užklausos:</p><pre>$query</pre><p>Klaida: " . $e->getMessage() . "</p>");
+        }
+    }
+
+    // Papildomas žingsnis seniems duomenims: Užtikriname, kad 'users' lentelė turi visus stulpelius
+    try {
+        $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS role ENUM('customer', 'admin') DEFAULT 'customer'");
+        $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image VARCHAR(255) DEFAULT NULL");
+        $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS birthdate DATE DEFAULT NULL");
+        $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT DEFAULT NULL");
+        $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS gender ENUM('male', 'female', 'unspecified') DEFAULT 'unspecified'");
+    } catch (PDOException $e) {
+        // Ignoruojame, jei stulpeliai jau yra
     }
 }
 
