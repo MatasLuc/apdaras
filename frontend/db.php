@@ -66,12 +66,9 @@ function get_db_connection(): PDO
 
     $host = env_value('DB_HOST', 'localhost');
     $port = env_value('DB_PORT', '3306');
-    $user = env_value('DB_USER', 'root');
-    // Daugelyje lokalių MySQL diegimų slaptažodis būna tuščias, todėl numatytoji
-    // reikšmė paliekama tuščia. Naudokite aplinkos kintamąjį DB_PASSWORD, kai
-    // serveryje yra nustatytas slaptažodis.
-    $password = env_value('DB_PASSWORD', '');
-    $database = env_value('DB_NAME', 'apdaras');
+    $user = env_value('DB_USER', 'apdarasl_apdaras');
+    $password = env_value('DB_PASSWORD', 'Kosmosas420!');
+    $database = env_value('DB_NAME', 'apdarasl_apdaras');
 
     try {
         $pdo = new PDO(

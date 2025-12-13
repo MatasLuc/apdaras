@@ -6,9 +6,9 @@ dotenv.config();
 const DEFAULT_DB_CONFIG = {
   DB_HOST: 'localhost',
   DB_PORT: '3306',
-  DB_USER: 'root',
-  DB_PASSWORD: '',
-  DB_NAME: 'apdaras'
+  DB_USER: 'apdarasl_apdaras',
+  DB_PASSWORD: 'Kosmosas420!',
+  DB_NAME: 'apdarasl_apdaras'
 };
 
 const TABLE_QUERIES = [
