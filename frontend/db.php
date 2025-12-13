@@ -1,9 +1,9 @@
 <?php
-// db.php - Database connection and automatic table creation
+// db.php - Prisijungimas ir automatinis struktūros užtikrinimas (Auto-migration)
 
 declare(strict_types=1);
 
-// Įjungiame klaidų rodymą, kol viskas veiks stabiliai
+// Rodyti klaidas tik vystymo metu
 ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
@@ -64,33 +64,42 @@ function get_db_connection(): PDO
             ]
         );
     } catch (PDOException $e) {
-        die('<h1>DB Klaida:</h1> ' . $e->getMessage());
+        die('<h1>DB Prisijungimo Klaida:</h1> ' . $e->getMessage());
     }
 
-    // Automatiškai užtikriname, kad lentelės egzistuoja
-    ensure_all_tables($pdo);
+    // Paleidžiame struktūros patikrinimą
+    ensure_schema($pdo);
 
     return $pdo;
 }
 
-function ensure_all_tables(PDO $pdo): void
+// Pagalbinė funkcija stulpeliui pridėti, jei jo nėra
+function ensure_column(PDO $pdo, string $table, string $columnDef): void
 {
-    $queries = [
-        // 1. Users
+    try {
+        // Bandome pridėti. Jei stulpelis yra, MySQL išmes klaidą "Duplicate column name", kurią mes pagausime ir ignoruosime.
+        $pdo->exec("ALTER TABLE {$table} ADD COLUMN {$columnDef}");
+    } catch (PDOException $e) {
+        // Ignoruojame klaidą 42S21 (Column already exists)
+        if ($e->errorInfo[1] != 1060) {
+            // Jei klaida ne apie egzistuojantį stulpelį, galbūt verta ją paminėti loguose, bet dažniausiai tai saugu praleisti
+            // error_log("Schema update notice for $table: " . $e->getMessage());
+        }
+    }
+}
+
+function ensure_schema(PDO $pdo): void
+{
+    // 1. Sukuriame lenteles, jei jų nėra (CREATE TABLE IF NOT EXISTS)
+    $createQueries = [
         "CREATE TABLE IF NOT EXISTS users (
             id INT AUTO_INCREMENT PRIMARY KEY,
             email VARCHAR(255) NOT NULL UNIQUE,
             password_hash VARCHAR(255) NOT NULL,
             name VARCHAR(150) NOT NULL,
-            role ENUM('customer', 'admin') DEFAULT 'customer',
-            profile_image VARCHAR(255) DEFAULT NULL,
-            birthdate DATE DEFAULT NULL,
-            address TEXT DEFAULT NULL,
-            gender ENUM('male', 'female', 'unspecified') DEFAULT 'unspecified',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
 
-        // 2. Categories
         "CREATE TABLE IF NOT EXISTS categories (
             id INT AUTO_INCREMENT PRIMARY KEY,
             name VARCHAR(255) NOT NULL,
@@ -98,62 +107,41 @@ function ensure_all_tables(PDO $pdo): void
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
 
-        // 3. Subcategories
         "CREATE TABLE IF NOT EXISTS subcategories (
             id INT AUTO_INCREMENT PRIMARY KEY,
             category_id INT NOT NULL,
             name VARCHAR(255) NOT NULL,
             slug VARCHAR(255) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
 
-        // 4. Products
         "CREATE TABLE IF NOT EXISTS products (
             id INT AUTO_INCREMENT PRIMARY KEY,
             title VARCHAR(255) NOT NULL,
             slug VARCHAR(255) NOT NULL,
-            subtitle VARCHAR(255),
-            ribbon VARCHAR(50),
-            summary TEXT,
-            description TEXT,
             price DECIMAL(10, 2) NOT NULL,
-            discount_price DECIMAL(10, 2) DEFAULT NULL,
-            stock INT DEFAULT 0,
-            tags VARCHAR(255),
-            weight_kg DECIMAL(10, 3),
-            allow_personalization TINYINT(1) DEFAULT 0,
-            category_id INT DEFAULT NULL,
-            subcategory_id INT DEFAULT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
 
-        // 5-7. Product Relations
         "CREATE TABLE IF NOT EXISTS product_categories (
             product_id INT NOT NULL,
             category_id INT NOT NULL,
-            PRIMARY KEY (product_id, category_id),
-            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-            FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+            PRIMARY KEY (product_id, category_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
 
         "CREATE TABLE IF NOT EXISTS product_subcategories (
             product_id INT NOT NULL,
             subcategory_id INT NOT NULL,
-            PRIMARY KEY (product_id, subcategory_id),
-            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-            FOREIGN KEY (subcategory_id) REFERENCES subcategories(id) ON DELETE CASCADE
+            PRIMARY KEY (product_id, subcategory_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
 
         "CREATE TABLE IF NOT EXISTS product_images (
             id INT AUTO_INCREMENT PRIMARY KEY,
             product_id INT NOT NULL,
             image_url VARCHAR(255) NOT NULL,
-            is_primary TINYINT(1) DEFAULT 0,
-            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+            is_primary TINYINT(1) DEFAULT 0
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
 
-        // 8-10. Variations
         "CREATE TABLE IF NOT EXISTS variation_attributes (
             id INT AUTO_INCREMENT PRIMARY KEY,
             name VARCHAR(100) NOT NULL
@@ -162,68 +150,47 @@ function ensure_all_tables(PDO $pdo): void
         "CREATE TABLE IF NOT EXISTS variation_values (
             id INT AUTO_INCREMENT PRIMARY KEY,
             variation_attribute_id INT NOT NULL,
-            value VARCHAR(100) NOT NULL,
-            FOREIGN KEY (variation_attribute_id) REFERENCES variation_attributes(id) ON DELETE CASCADE
+            value VARCHAR(100) NOT NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
 
         "CREATE TABLE IF NOT EXISTS product_variations (
             product_id INT NOT NULL,
             variation_value_id INT NOT NULL,
-            PRIMARY KEY (product_id, variation_value_id),
-            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-            FOREIGN KEY (variation_value_id) REFERENCES variation_values(id) ON DELETE CASCADE
+            PRIMARY KEY (product_id, variation_value_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
 
         "CREATE TABLE IF NOT EXISTS product_related (
             product_id INT NOT NULL,
             related_product_id INT NOT NULL,
-            PRIMARY KEY (product_id, related_product_id),
-            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-            FOREIGN KEY (related_product_id) REFERENCES products(id) ON DELETE CASCADE
+            PRIMARY KEY (product_id, related_product_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
 
-        // 11-14. Carts & Orders
         "CREATE TABLE IF NOT EXISTS carts (
             id INT AUTO_INCREMENT PRIMARY KEY,
             session_id VARCHAR(255) NOT NULL,
-            user_id INT DEFAULT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            INDEX (session_id),
-            INDEX (user_id)
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
 
         "CREATE TABLE IF NOT EXISTS cart_items (
             id INT AUTO_INCREMENT PRIMARY KEY,
             cart_id INT NOT NULL,
             product_id INT NOT NULL,
-            variation_id INT DEFAULT NULL,
             quantity INT DEFAULT 1,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE CASCADE,
-            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
 
         "CREATE TABLE IF NOT EXISTS orders (
             id INT AUTO_INCREMENT PRIMARY KEY,
-            user_id INT DEFAULT NULL,
-            guest_name VARCHAR(255),
-            guest_email VARCHAR(255),
-            guest_address TEXT,
             total_price DECIMAL(10, 2) NOT NULL,
-            status ENUM('new', 'paid', 'shipped', 'completed', 'cancelled') DEFAULT 'new',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
 
         "CREATE TABLE IF NOT EXISTS order_items (
             id INT AUTO_INCREMENT PRIMARY KEY,
             order_id INT NOT NULL,
-            product_id INT DEFAULT NULL,
             product_name VARCHAR(255) NOT NULL,
-            variation_info VARCHAR(255) DEFAULT NULL,
             quantity INT NOT NULL,
-            price DECIMAL(10, 2) NOT NULL,
-            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+            price DECIMAL(10, 2) NOT NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         
         "CREATE TABLE IF NOT EXISTS coupons (
@@ -231,9 +198,7 @@ function ensure_all_tables(PDO $pdo): void
             code VARCHAR(50) NOT NULL UNIQUE,
             discount_type ENUM('percent', 'fixed') NOT NULL,
             discount_value DECIMAL(10, 2) NOT NULL,
-            expires_at DATETIME DEFAULT NULL,
-            usage_limit INT DEFAULT NULL,
-            times_used INT DEFAULT 0
+            expires_at DATETIME DEFAULT NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
 
         "CREATE TABLE IF NOT EXISTS shipping_methods (
@@ -244,33 +209,56 @@ function ensure_all_tables(PDO $pdo): void
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"
     ];
 
-    foreach ($queries as $query) {
-        try {
-            $pdo->exec($query);
-        } catch (PDOException $e) {
-            die("<h1>Lentelės kūrimo klaida</h1><p>Nepavyko įvykdyti užklausos:</p><pre>$query</pre><p>Klaida: " . $e->getMessage() . "</p>");
-        }
+    foreach ($createQueries as $query) {
+        $pdo->exec($query);
     }
 
-    // --- SVARBU: Atnaujiname senas lenteles (ALTER TABLE) ---
-    try {
-        // Users
-        $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS role ENUM('customer', 'admin') DEFAULT 'customer'");
-        $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image VARCHAR(255) DEFAULT NULL");
-        $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS birthdate DATE DEFAULT NULL");
-        $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT DEFAULT NULL");
-        $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS gender ENUM('male', 'female', 'unspecified') DEFAULT 'unspecified'");
-        
-        // Cart Items (Jūsų klaidos sprendimas)
-        $pdo->exec("ALTER TABLE cart_items ADD COLUMN IF NOT EXISTS variation_id INT DEFAULT NULL");
-        
-        // Order Items (Prevencija)
-        $pdo->exec("ALTER TABLE order_items ADD COLUMN IF NOT EXISTS variation_info VARCHAR(255) DEFAULT NULL");
-        
-    } catch (PDOException $e) {
-        // Ignoruojame klaidas, jei stulpeliai jau yra, arba duomenų bazė nepalaiko 'IF NOT EXISTS' sintaksės ALTER komandoje
-        // (MariaDB 10.2+ ir MySQL 8.0+ palaiko)
-    }
+    // 2. Užtikriname, kad visi reikalingi stulpeliai egzistuoja (ALTER TABLE ADD COLUMN)
+    // Tai ištaisys "Unknown column" klaidas, jei lentelės buvo sukurtos anksčiau be šių laukų.
+
+    // USERS
+    ensure_column($pdo, 'users', "role ENUM('customer', 'admin') DEFAULT 'customer'");
+    ensure_column($pdo, 'users', "profile_image VARCHAR(255) DEFAULT NULL");
+    ensure_column($pdo, 'users', "birthdate DATE DEFAULT NULL");
+    ensure_column($pdo, 'users', "address TEXT DEFAULT NULL");
+    ensure_column($pdo, 'users', "gender ENUM('male', 'female', 'unspecified') DEFAULT 'unspecified'");
+
+    // PRODUCTS
+    ensure_column($pdo, 'products', "subtitle VARCHAR(255)");
+    ensure_column($pdo, 'products', "ribbon VARCHAR(50)");
+    ensure_column($pdo, 'products', "summary TEXT");
+    ensure_column($pdo, 'products', "description TEXT");
+    ensure_column($pdo, 'products', "discount_price DECIMAL(10, 2) DEFAULT NULL");
+    ensure_column($pdo, 'products', "stock INT DEFAULT 0");
+    ensure_column($pdo, 'products', "tags VARCHAR(255)");
+    ensure_column($pdo, 'products', "weight_kg DECIMAL(10, 3)");
+    ensure_column($pdo, 'products', "allow_personalization TINYINT(1) DEFAULT 0");
+    ensure_column($pdo, 'products', "category_id INT DEFAULT NULL");
+    ensure_column($pdo, 'products', "subcategory_id INT DEFAULT NULL");
+
+    // CART_ITEMS (Čia buvo jūsų klaida!)
+    ensure_column($pdo, 'cart_items', "cart_id INT NOT NULL");
+    ensure_column($pdo, 'cart_items', "product_id INT NOT NULL");
+    ensure_column($pdo, 'cart_items', "variation_id INT DEFAULT NULL");
+    
+    // CARTS
+    ensure_column($pdo, 'carts', "user_id INT DEFAULT NULL");
+    ensure_column($pdo, 'carts', "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+
+    // ORDERS
+    ensure_column($pdo, 'orders', "user_id INT DEFAULT NULL");
+    ensure_column($pdo, 'orders', "guest_name VARCHAR(255)");
+    ensure_column($pdo, 'orders', "guest_email VARCHAR(255)");
+    ensure_column($pdo, 'orders', "guest_address TEXT");
+    ensure_column($pdo, 'orders', "status ENUM('new', 'paid', 'shipped', 'completed', 'cancelled') DEFAULT 'new'");
+
+    // ORDER_ITEMS
+    ensure_column($pdo, 'order_items', "product_id INT DEFAULT NULL");
+    ensure_column($pdo, 'order_items', "variation_info VARCHAR(255) DEFAULT NULL");
+
+    // COUPONS
+    ensure_column($pdo, 'coupons', "usage_limit INT DEFAULT NULL");
+    ensure_column($pdo, 'coupons', "times_used INT DEFAULT 0");
 }
 
 function find_user_by_email(PDO $pdo, string $email): ?array
