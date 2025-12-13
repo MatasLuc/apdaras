@@ -351,7 +351,7 @@ unset($_SESSION['cart_alert']);
                     const printCanvas = await html2canvas(canvasWrap, {
                         useCORS: true,
                         scale: 4, 
-                        backgroundColor: null,
+                        backgroundColor: null, // Nustatytas skaidrumas!
                         scrollX: 0,
                         scrollY: 0
                     });
