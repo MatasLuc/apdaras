@@ -25,6 +25,7 @@ if (($user['role'] ?? 'customer') !== 'admin') {
     <div class="container">
       <div class="tabs">
         <button class="tab is-active" data-tab="catalog">Katalogas</button>
+        <button class="tab" data-tab="orders">Užsakymai</button>
         <button class="tab" data-tab="account">Naudotojai</button>
       </div>
 
@@ -321,6 +322,29 @@ if (($user['role'] ?? 'customer') !== 'admin') {
           </div>
         </div>
       </div>
+
+      <div class="tab-panel" id="tab-orders">
+        <div class="section__inner">
+            <div class="section__header">
+                <p class="badge">Pardavimai</p>
+                <h3>Gauti užsakymai</h3>
+            </div>
+            <div class="card card--surface" style="margin-top: 20px;">
+                <div class="actions" style="margin-bottom: 16px;">
+                    <button class="btn btn--ghost" id="refresh-orders">Atnaujinti sąrašą</button>
+                </div>
+                <div class="table" id="orders-table">
+                    <div class="table__row table__row--head">
+                        <span>ID / Data</span>
+                        <span>Klientas</span>
+                        <span>Suma</span>
+                        <span>Būsena</span>
+                    </div>
+                    </div>
+            </div>
+        </div>
+      </div>
+
       <div class="tab-panel" id="tab-account">
         <div class="card card--surface">
           <div class="card__header">
