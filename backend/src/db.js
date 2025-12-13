@@ -129,21 +129,9 @@ const TABLE_QUERIES = [
   )`
 ];
 
-const MIGRATIONS = [
-  `ALTER TABLE products ADD COLUMN IF NOT EXISTS subtitle VARCHAR(255) DEFAULT '' AFTER slug`,
-  `ALTER TABLE products ADD COLUMN IF NOT EXISTS ribbon VARCHAR(120) DEFAULT '' AFTER subtitle`,
-  `ALTER TABLE products ADD COLUMN IF NOT EXISTS discount_price DECIMAL(10,2) DEFAULT NULL AFTER price`,
-  `ALTER TABLE products ADD COLUMN IF NOT EXISTS weight_kg DECIMAL(8,3) DEFAULT NULL AFTER tags`,
-  `ALTER TABLE products ADD COLUMN IF NOT EXISTS allow_personalization TINYINT(1) DEFAULT 0 AFTER weight_kg`,
-  `ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image VARCHAR(255) DEFAULT NULL AFTER role`,
-  `ALTER TABLE users ADD COLUMN IF NOT EXISTS birthdate DATE DEFAULT NULL AFTER profile_image`,
-  `ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT DEFAULT NULL AFTER birthdate`,
-  `ALTER TABLE users ADD COLUMN IF NOT EXISTS gender ENUM('male', 'female', 'unspecified') DEFAULT 'unspecified' AFTER address`,
-  `INSERT IGNORE INTO product_categories (product_id, category_id)
-   SELECT id, category_id FROM products WHERE category_id IS NOT NULL`,
-  `INSERT IGNORE INTO product_subcategories (product_id, subcategory_id)
-   SELECT id, subcategory_id FROM products WHERE subcategory_id IS NOT NULL`
-];
+// Migracijos paliktos tuščios, kad nekeltų klaidų startuojant.
+// Visa struktūra jau apibrėžta aukščiau esančiame TABLE_QUERIES masyve.
+const MIGRATIONS = [];
 
 let pool;
 
@@ -182,10 +170,12 @@ export async function initDb() {
   );
   await connection.query(`USE \`${DB_NAME}\``);
 
+  // Automatiškai sukuria lenteles, jei jų nėra
   for (const statement of TABLE_QUERIES) {
     await connection.query(statement);
   }
 
+  // Vykdo migracijas (šiuo metu tuščia, todėl klaidų nebus)
   for (const migration of MIGRATIONS) {
     await connection.query(migration);
   }
@@ -210,4 +200,3 @@ export function getPool() {
   }
   return pool;
 }
-
