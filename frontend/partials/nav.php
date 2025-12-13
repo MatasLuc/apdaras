@@ -11,13 +11,22 @@ $accountLabel = $isLoggedIn ? 'Labas, ' . $userName : 'Paskyra';
 ?>
 <header class="topbar">
   <div class="container topbar__inner">
-    <div class="brand">
+    <a class="brand" href="index.php#pagrindinis">
       <span class="brand__dot" aria-hidden="true"></span>
       apdaras.lt
-    </div>
+    </a>
     <nav class="nav" aria-label="Pagrindinė navigacija">
       <a href="index.php#pagrindinis">Pagrindinis</a>
       <a href="parduotuve.php">Parduotuvė</a>
+      <div class="nav__item nav__item--has-dropdown">
+        <a class="nav__parent" href="apie.php">Apie</a>
+        <div class="nav__dropdown" role="menu">
+          <a href="apie.php">Apie</a>
+          <a href="kontaktai.php">Kontaktai</a>
+          <a href="grazinimas.php">Grąžinimas</a>
+          <a href="mokejimas-pristatymas.php">Mokėjimas ir pristatymas</a>
+        </div>
+      </div>
     </nav>
     <div class="actions">
       <?php if ($isLoggedIn): ?>
