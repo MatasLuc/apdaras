@@ -6,7 +6,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $quantity = (int) ($_POST['qty'] ?? 1);
 
     // Parduotuvės puslapyje dedame tik paprastas prekes.
-    // Variacijas turinčios prekės čia neturėtų būti siunčiamos per POST, nes UI jas paslepia.
     $added = add_cart_item($productId, $quantity);
 
     $_SESSION['cart_alert'] = $added
@@ -109,7 +108,9 @@ unset($_SESSION['cart_alert']);
                     </div>
                     
                     <div style="width: 100%; display: flex; gap: 8px; margin-top: 8px;">
-                      <?php if ($product['has_variations']): ?>
+                      <?php if (!empty($product['allow_personalization'])): ?>
+                        <a class="btn btn--primary" href="produktas.php?id=<?php echo $product['id']; ?>" style="flex: 1; justify-content: center;">Personalizuoti</a>
+                      <?php elseif ($product['has_variations']): ?>
                         <a class="btn btn--primary" href="produktas.php?id=<?php echo $product['id']; ?>" style="flex: 1; justify-content: center;">Pasirinkti savybes</a>
                       <?php else: ?>
                         <form method="post" class="product-form" style="flex: 1; display:flex; gap:8px;">
