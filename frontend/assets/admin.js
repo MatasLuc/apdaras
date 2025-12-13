@@ -617,19 +617,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
+    // --- Pataisyta kategorijų pasirinkimo logika ---
+    elements.categorySelect.addEventListener('change', (e) => {
+        const { type } = e.target.dataset;
+        const value = e.target.value; // SVARBU: imame value tiesiogiai, ne iš dataset
+        
+        if (!type) return;
+        const set = type === 'category' ? state.categoryIds : state.subcategoryIds;
+        e.target.checked ? set.add(Number(value)) : set.delete(Number(value));
+    });
+
     elements.categoryManager.addEventListener('click', (e) => {
        const btn = e.target.closest('button');
        if(!btn) return;
        const { action, subAction, id, cat } = btn.dataset;
        if (action === 'edit') editCategory(id);
        if (action === 'delete') deleteCategory(id);
-    });
-
-    elements.categorySelect.addEventListener('change', (e) => {
-        const { type, value } = e.target.dataset;
-        if (!type) return;
-        const set = type === 'category' ? state.categoryIds : state.subcategoryIds;
-        e.target.checked ? set.add(Number(value)) : set.delete(Number(value));
     });
 
     elements.variationPicker.addEventListener('change', (e) => {
