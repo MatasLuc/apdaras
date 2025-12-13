@@ -79,16 +79,24 @@ unset($_SESSION['cart_alert']);
               <p class="muted">Pabandykite pridėti produktų administravimo skydelyje arba atnaujinkite puslapį.</p>
             </div>
           <?php else: ?>
-            <div class="grid grid--three">
+            <div class="grid grid--four">
               <?php foreach ($catalog as $product): ?>
                 <article class="card card--product">
+                  <div class="card__image-container">
+                    <?php if (!empty($product['image_url'])): ?>
+                        <img src="<?php echo htmlspecialchars($product['image_url'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($product['name'], ENT_QUOTES, 'UTF-8'); ?>" class="card__image" loading="lazy">
+                    <?php else: ?>
+                        <span class="muted" style="font-size: 12px;">Nėra foto</span>
+                    <?php endif; ?>
+                  </div>
+
                   <div class="card__header">
                     <span class="pill"><?php echo htmlspecialchars($product['category'], ENT_QUOTES, 'UTF-8'); ?></span>
                     <span class="pill pill--ghost"><?php echo htmlspecialchars($product['tag'], ENT_QUOTES, 'UTF-8'); ?></span>
                   </div>
                   <h3><?php echo htmlspecialchars($product['name'], ENT_QUOTES, 'UTF-8'); ?></h3>
                   <p class="muted">
-                    <?php echo htmlspecialchars($product['summary'] ?: 'Atraskite naujausias kolekcijas ir variacijas.', ENT_QUOTES, 'UTF-8'); ?>
+                    <?php echo htmlspecialchars($product['summary'] ?: 'Trumpas aprašymas', ENT_QUOTES, 'UTF-8'); ?>
                   </p>
                   <div class="card__meta">
                     <div class="price-stack">
@@ -97,13 +105,10 @@ unset($_SESSION['cart_alert']);
                         <span class="card__old-price">€<?php echo number_format($product['full_price'], 2, '.', ''); ?></span>
                       <?php endif; ?>
                     </div>
-                    <form method="post" class="product-form">
+                    <form method="post" class="product-form" style="width: 100%; display: flex; gap: 8px; margin-top: 8px;">
                       <input type="hidden" name="product_id" value="<?php echo htmlspecialchars($product['id'], ENT_QUOTES, 'UTF-8'); ?>">
-                      <label class="quantity">
-                        <span class="sr-only">Kiekis</span>
-                        <input type="number" name="qty" min="1" max="20" value="1">
-                      </label>
-                      <button class="btn btn--primary" type="submit">Į krepšelį</button>
+                      <button class="btn btn--soft" type="submit" style="flex: 1;">Į krepšelį</button>
+                      <a class="btn btn--primary" href="produktas.php?id=<?php echo $product['id']; ?>" style="flex: 1; justify-content: center;">Plačiau</a>
                     </form>
                   </div>
                 </article>
