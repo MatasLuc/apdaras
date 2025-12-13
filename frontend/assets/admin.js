@@ -1,5 +1,3 @@
-// frontend/assets/admin.js
-
 document.addEventListener('DOMContentLoaded', () => {
     const config = window.ADMIN_CONFIG || {};
     const apiBaseUrl = "api/";
@@ -14,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
         subcategoryIds: new Set(),
         variationIds: new Set(),
         relatedIds: new Set(),
-        editingId: null // Sekame, ką redaguojame
+        editingId: null
     };
 
     // DOM elementai
@@ -36,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
         formTitle: document.getElementById('form-title'),
         adminNav: document.querySelectorAll('.admin-nav__item'),
         adminSections: document.querySelectorAll('[data-admin-section]'),
-        cancelEditBtn: document.getElementById('cancel-edit'), // Naujas mygtukas
+        cancelEditBtn: document.getElementById('cancel-edit'),
         openNewProductBtn: document.getElementById('open-new-product')
     };
 
@@ -83,7 +81,6 @@ document.addEventListener('DOMContentLoaded', () => {
         note.className = `alert alert--${tone}`;
         note.textContent = text;
         elements.messages.prepend(note);
-        // Automatiškai paslėpti po 5s
         setTimeout(() => note.remove(), 5000);
     }
 
@@ -124,12 +121,10 @@ document.addEventListener('DOMContentLoaded', () => {
             card.classList.toggle('is-active', card.id === targetId);
         });
         
-        // Jei grįžtame į sąrašą, išvalome formą
         if (targetId === 'catalog-summary') {
             resetForm();
         }
         
-        // Scroll to top kad vartotojas matytų pasikeitimą
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -140,7 +135,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
         
-        // Default section
         if (config.initialProductId) {
              startEditProduct(config.initialProductId);
         } else {
@@ -159,14 +153,13 @@ document.addEventListener('DOMContentLoaded', () => {
         state.variationIds.clear();
         state.relatedIds.clear();
         
-        // Reset checkboxes visual state
         renderCategorySelect();
         renderVariations();
         renderImages();
         renderRelated();
     }
 
-    // --- Produkto Redagavimo Logika (Nauja) ---
+    // --- Produkto Redagavimo Logika ---
 
     window.startEditProduct = async function(id) {
         try {
@@ -183,7 +176,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!productId) return;
         const data = await fetchJson(`/products/${productId}`);
         
-        // Užpildome formos laukus
         const f = elements.form;
         f.querySelector('[name="title"]').value = data.title || '';
         f.querySelector('[name="subtitle"]').value = data.subtitle || '';
@@ -197,7 +189,6 @@ document.addEventListener('DOMContentLoaded', () => {
         f.querySelector('[name="weight_kg"]').value = data.weight_kg || '';
         f.querySelector('[name="allow_personalization"]').value = data.allow_personalization ? '1' : '0';
 
-        // Atstatome state
         state.categoryIds = new Set((data.categories_list || []).map((c) => c.id));
         state.subcategoryIds = new Set((data.subcategories_list || []).map((c) => c.id));
         state.variationIds = new Set(data.variation_value_ids || []);
@@ -207,7 +198,6 @@ document.addEventListener('DOMContentLoaded', () => {
             is_primary: img.is_primary || index === 0
         }));
 
-        // Atnaujiname UI
         renderCategorySelect();
         renderVariations();
         renderImages();
@@ -231,9 +221,16 @@ document.addEventListener('DOMContentLoaded', () => {
             row.className = 'table__row';
             const categories = (product.categories_list || []).map((c) => c.name).join(', ');
             
-            // Pakeista: Vietoje <a href> naudojame <button> su onclick
+            const mainImage = (product.images_list || []).find(img => img.is_primary) || (product.images_list || [])[0];
+            const imgHtml = mainImage 
+                ? `<img src="${mainImage.image_url}" class="table-thumb" alt="" />`
+                : `<div class="table-thumb" style="background: #e2e8f0;"></div>`;
+
             row.innerHTML = `
-              <span class="strong">${product.title}</span>
+              <div class="table-row-content">
+                ${imgHtml}
+                <span class="strong">${product.title}</span>
+              </div>
               <span>${categories || 'Nepaskirta'}</span>
               <span>${formatCurrency(product.discount_price || product.price)}</span>
               <span class="actions">
@@ -447,7 +444,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Kategorijų veiksmai
     async function upsertCategory(formData, isSubcategory = false) {
         const payload = Object.fromEntries(formData.entries());
         const endpoint = isSubcategory
@@ -490,9 +486,6 @@ document.addEventListener('DOMContentLoaded', () => {
         await loadCollections();
     }
     
-    // Panašiai subkategorijoms... (kodas sutrumpintas aiškumo dėlei, bet principas tas pats)
-    
-    // --- Failų įkėlimas ---
     async function uploadFiles(files) {
         if (!files.length) return;
         for (const file of files) {
@@ -516,7 +509,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Event Listeners ---
 
-    // Mygtukas: Pridėti naują prekę
     if(elements.openNewProductBtn) {
         elements.openNewProductBtn.addEventListener('click', () => {
             resetForm();
@@ -524,7 +516,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Mygtukas: Atšaukti redagavimą
     if(elements.cancelEditBtn) {
         elements.cancelEditBtn.addEventListener('click', () => {
             if(confirm('Ar tikrai norite atšaukti? Visi pakeitimai bus prarasti.')) {
@@ -533,7 +524,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Kategorijų formos
     document.getElementById('category-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         await upsertCategory(new FormData(e.target));
@@ -546,7 +536,6 @@ document.addEventListener('DOMContentLoaded', () => {
         e.target.reset();
     });
 
-    // Variacijos
     document.getElementById('variation-attribute-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const name = document.getElementById('variation-attribute-name').value.trim();
@@ -566,7 +555,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     document.getElementById('add-variation-value').addEventListener('click', async () => {
-         // ... ta pati logika kaip anksčiau ...
          const value = document.getElementById('new-variation-value').value.trim();
          const attributeId = Number(elements.variationSelect.value);
          if (!value || !attributeId) return;
@@ -584,7 +572,6 @@ document.addEventListener('DOMContentLoaded', () => {
          }
     });
 
-    // Produkto formos submit
     elements.form.addEventListener('submit', async (event) => {
         event.preventDefault();
         const formData = new FormData(event.target);
@@ -624,20 +611,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
             pushMessage(state.editingId ? 'Produktas atnaujintas' : 'Produktas sukurtas', 'success');
             await loadCollections();
-            showSection('catalog-summary'); // Grįžti į sąrašą po išsaugojimo
+            showSection('catalog-summary');
         } catch (error) {
             pushMessage(`Nepavyko išsaugoti: ${error.message}`, 'error');
         }
     });
     
-    // UI Helpers (Delegate)
     elements.categoryManager.addEventListener('click', (e) => {
        const btn = e.target.closest('button');
        if(!btn) return;
        const { action, subAction, id, cat } = btn.dataset;
        if (action === 'edit') editCategory(id);
        if (action === 'delete') deleteCategory(id);
-       // Pridėkite subkategorijų logiką čia
     });
 
     elements.categorySelect.addEventListener('change', (e) => {
@@ -678,7 +663,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderImages();
     });
     
-    // Related products
     const searchInput = document.getElementById('related-search');
     if(searchInput) {
         searchInput.addEventListener('input', (e) => renderRelated(e.target.value));
@@ -698,7 +682,6 @@ document.addEventListener('DOMContentLoaded', () => {
          }
     });
 
-    // --- Init ---
     renderTabs();
     setupCollapsibles();
     setupAdminNavigation();
