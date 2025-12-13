@@ -3,7 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import fs from 'fs/promises';
 import path from 'path';
-import { initDb } from './db.js';
+import { getPool, initDb } from './db.js';
 import authRoutes from './routes/auth.js';
 import categoryRoutes from './routes/categories.js';
 import productRoutes from './routes/products.js';
@@ -28,7 +28,16 @@ app.use(express.json({ limit: '12mb' }));
 const uploadDir = path.join(process.cwd(), 'upload');
 app.use('/upload', express.static(uploadDir));
 
-app.get('/health', (_req, res) => res.json({ ok: true }));
+app.get('/health', async (_req, res) => {
+  try {
+    const db = getPool();
+    const [rows] = await db.query('SELECT 1 AS ok');
+    const dbOk = Boolean(rows?.[0]?.ok);
+    return res.json({ ok: true, db: dbOk });
+  } catch (err) {
+    return res.status(500).json({ ok: false, message: 'DB sveikatos patikra nepavyko', detail: err.message });
+  }
+});
 app.use('/auth', authRoutes);
 app.use('/categories', categoryRoutes);
 app.use('/products', productRoutes);

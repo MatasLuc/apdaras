@@ -1,5 +1,7 @@
 import jwt from 'jsonwebtoken';
 
+const JWT_SECRET = process.env.JWT_SECRET || 'development-secret';
+
 export function requireAuth(req, res, next) {
   const header = req.headers.authorization;
   // Allow either a JWT bearer token or an admin role header from the PHP panel.
@@ -10,7 +12,7 @@ export function requireAuth(req, res, next) {
     }
 
     try {
-      const payload = jwt.verify(token, process.env.JWT_SECRET);
+      const payload = jwt.verify(token, JWT_SECRET);
       req.user = payload;
       return next();
     } catch (err) {
