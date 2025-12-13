@@ -10,49 +10,7 @@ if (!$id) {
     exit;
 }
 
-// -- Gauname variacijas --
-$stmtVar = $pdo->prepare("
-    SELECT va.name as attribute, vv.value, vv.id as val_id
-    FROM product_variations pv
-    JOIN variation_values vv ON pv.variation_value_id = vv.id
-    JOIN variation_attributes va ON vv.variation_attribute_id = va.id
-    WHERE pv.product_id = ?
-    ORDER BY va.name, vv.value
-");
-$stmtVar->execute([$id]);
-$variations = $stmtVar->fetchAll();
-
-$hasVariations = count($variations) > 0;
-$groupedVariations = [];
-foreach ($variations as $v) {
-    $groupedVariations[$v['attribute']][] = ['id' => $v['val_id'], 'value' => $v['value']];
-}
-
-// -- POST Apdorojimas --
-$errorMsg = null;
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $productId = $_POST['product_id'] ?? '';
-    $quantity = (int) ($_POST['qty'] ?? 1);
-    $variationId = !empty($_POST['variation_id']) ? (int)$_POST['variation_id'] : null;
-
-    // VALIDACIJA: Jei prekė turi variacijų, bet niekas nepasirinkta
-    if ($hasVariations && !$variationId) {
-        $errorMsg = "Būtina pasirinkti variaciją (dydį ar spalvą) prieš dedant į krepšelį.";
-    } else {
-        $added = add_cart_item($productId, $quantity, $variationId);
-        
-        $_SESSION['cart_alert'] = $added
-            ? ['type' => 'success', 'text' => 'Prekė pridėta į krepšelį.']
-            : ['type' => 'error', 'text' => 'Nepavyko pridėti prekės.'];
-
-        if ($added) {
-            header('Location: produktas.php?id=' . $id);
-            exit;
-        }
-    }
-}
-
-// 2. Gauname produkto informaciją
+// -- 1. Gauname produkto informaciją --
 $stmt = $pdo->prepare("
     SELECT p.*, 
            GROUP_CONCAT(DISTINCT c.name SEPARATOR ', ') as category_names
@@ -71,21 +29,67 @@ if (!$product) {
     echo 'Prekė nerasta.'; exit;
 }
 
-// 3. Nuotraukos
+// -- 2. Variacijos --
+$stmtVar = $pdo->prepare("
+    SELECT va.name as attribute, vv.value, vv.id as val_id
+    FROM product_variations pv
+    JOIN variation_values vv ON pv.variation_value_id = vv.id
+    JOIN variation_attributes va ON vv.variation_attribute_id = va.id
+    WHERE pv.product_id = ?
+    ORDER BY va.name, vv.value
+");
+$stmtVar->execute([$id]);
+$variations = $stmtVar->fetchAll();
+$hasVariations = count($variations) > 0;
+$groupedVariations = [];
+foreach ($variations as $v) {
+    $groupedVariations[$v['attribute']][] = ['id' => $v['val_id'], 'value' => $v['value']];
+}
+
+// -- 3. Nuotraukos --
 $stmtImg = $pdo->prepare("SELECT * FROM product_images WHERE product_id = ? ORDER BY is_primary DESC, id ASC");
 $stmtImg->execute([$id]);
 $images = $stmtImg->fetchAll();
 if (empty($images)) $images[] = ['image_url' => '', 'is_primary' => 1];
 
-// 4. Susijusios prekės
-$stmtRelated = $pdo->prepare("
-    SELECT p.id, p.title, p.price, p.discount_price,
-           (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC LIMIT 1) as image_url
-    FROM products p
-    WHERE p.id != ? AND p.stock > 0
-    ORDER BY RAND()
-    LIMIT 4
-");
+// -- POST Apdorojimas --
+$errorMsg = null;
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $productId = $_POST['product_id'] ?? '';
+    $quantity = (int) ($_POST['qty'] ?? 1);
+    $variationId = !empty($_POST['variation_id']) ? (int)$_POST['variation_id'] : null;
+    $persDataRaw = $_POST['personalization_data'] ?? null;
+
+    if ($hasVariations && !$variationId) {
+        $errorMsg = "Būtina pasirinkti variaciją (dydį ar spalvą).";
+    } elseif ($product['allow_personalization'] && empty($persDataRaw) && !empty($_POST['is_personalized_intent'])) {
+         // Jei vartotojas bandė personalizuoti, bet kažkas nepavyko
+         // (Šioje versijoje leidžiam ir tuščią, jei vartotojas nieko neįrašė)
+    }
+
+    if (!$errorMsg) {
+        // Jei nėra teksto, nesiunčiam personalizacijos duomenų (kad krepšelyje būtų "švari" prekė)
+        if ($persDataRaw) {
+            $decoded = json_decode($persDataRaw, true);
+            if (empty($decoded['text'])) {
+                $persDataRaw = null;
+            }
+        }
+
+        $added = add_cart_item($productId, $quantity, $variationId, $persDataRaw);
+        $_SESSION['cart_alert'] = $added
+            ? ['type' => 'success', 'text' => 'Prekė pridėta į krepšelį.']
+            : ['type' => 'error', 'text' => 'Nepavyko pridėti prekės.'];
+
+        if ($added) {
+            header('Location: produktas.php?id=' . $id);
+            exit;
+        }
+    }
+}
+
+// -- Susijusios prekės --
+$stmtRelated = $pdo->prepare("SELECT p.id, p.title, p.price, p.discount_price, (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC LIMIT 1) as image_url FROM products p WHERE p.id != ? AND p.stock > 0 ORDER BY RAND() LIMIT 4");
 $stmtRelated->execute([$id]);
 $relatedProducts = $stmtRelated->fetchAll();
 
@@ -98,38 +102,7 @@ unset($_SESSION['cart_alert']);
   <meta charset="UTF-8" />
   <title><?php echo htmlspecialchars($product['title']); ?> – apdaras.lt</title>
   <link rel="stylesheet" href="./assets/styles.css" />
-  <style>
-    /* ... (Stiliai) ... */
-    .product-layout { display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; align-items: start; }
-    .gallery { display: grid; gap: 16px; }
-    .gallery__main { width: 100%; aspect-ratio: 1/1.1; background: #f4f4f5; border-radius: 16px; overflow: hidden; border: 1px solid var(--stroke); }
-    .gallery__main img { width: 100%; height: 100%; object-fit: cover; }
-    .gallery__thumbs { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
-    .gallery__thumb { width: 80px; height: 80px; flex-shrink: 0; border-radius: 10px; overflow: hidden; cursor: pointer; border: 2px solid transparent; }
-    .gallery__thumb.is-active { border-color: var(--accent); }
-    .gallery__thumb img { width: 100%; height: 100%; object-fit: cover; }
-    .product-info { display: flex; flex-direction: column; gap: 24px; position: sticky; top: 100px; }
-    .big-price { font-size: 32px; font-weight: 800; color: var(--accent-2); }
-    .big-old-price { font-size: 20px; text-decoration: line-through; color: var(--muted); }
-    .add-to-cart-box { background: var(--surface); border: 1px solid var(--stroke); border-radius: 16px; padding: 20px; display: grid; gap: 16px; }
-    .variation-select { display: flex; flex-wrap: wrap; gap: 8px; }
-    .variation-radio { display: none; }
-    .variation-label {
-        border: 1px solid var(--stroke);
-        background: #fff;
-        padding: 8px 14px;
-        border-radius: 8px;
-        cursor: pointer;
-        font-weight: 700;
-        transition: 0.2s;
-    }
-    .variation-radio:checked + .variation-label {
-        background: var(--text);
-        color: #fff;
-        border-color: var(--text);
-    }
-    @media (max-width: 900px) { .product-layout { grid-template-columns: 1fr; } .product-info { position: static; } }
-  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700&family=Playfair+Display:wght@700&family=Montserrat:wght@900&display=swap" rel="stylesheet">
 </head>
 <body>
   <?php include __DIR__ . '/partials/nav.php'; ?>
@@ -137,64 +110,228 @@ unset($_SESSION['cart_alert']);
   <main class="section">
     <div class="container">
       <?php if ($alert): ?>
-        <div class="alert alert--<?php echo $alert['type']; ?>" style="margin-bottom: 24px;">
-          <?php echo htmlspecialchars($alert['text']); ?>
-        </div>
+        <div class="alert alert--<?php echo $alert['type']; ?>" style="margin-bottom: 24px;"><?php echo htmlspecialchars($alert['text']); ?></div>
       <?php endif; ?>
-      
       <?php if ($errorMsg): ?>
-        <div class="alert alert--error" style="margin-bottom: 24px; border-color: #ef4444; background: #fee2e2; color: #991b1b;">
-          <strong>Klaida:</strong> <?php echo htmlspecialchars($errorMsg); ?>
-        </div>
+        <div class="alert alert--error" style="margin-bottom: 24px;"><strong>Klaida:</strong> <?php echo htmlspecialchars($errorMsg); ?></div>
       <?php endif; ?>
 
       <nav aria-label="Breadcrumb" style="margin-bottom: 24px; color: var(--muted); font-size: 14px;">
         <a href="parduotuve.php" class="text-link">Parduotuvė</a> / <span><?php echo htmlspecialchars($product['category_names'] ?: 'Kategorija'); ?></span>
       </nav>
 
-      <div class="product-layout">
-        <div class="gallery">
-          <div class="gallery__main">
-            <?php $mainSrc = !empty($images[0]['image_url']) ? $images[0]['image_url'] : ''; ?>
-            <?php if($mainSrc): ?>
-                <img id="mainImage" src="<?php echo htmlspecialchars($mainSrc); ?>" alt="">
-            <?php else: ?>
-                <div style="display:flex;align-items:center;justify-content:center;height:100%;">Nėra foto</div>
-            <?php endif; ?>
-          </div>
-          <?php if (count($images) > 1): ?>
-            <div class="gallery__thumbs">
-              <?php foreach ($images as $index => $img): ?>
-                <button class="gallery__thumb <?php echo $index === 0 ? 'is-active' : ''; ?>" onclick="changeImage('<?php echo $img['image_url']; ?>', this)">
-                  <img src="<?php echo htmlspecialchars($img['image_url']); ?>" alt="">
-                </button>
-              <?php endforeach; ?>
-            </div>
-          <?php endif; ?>
-        </div>
+      <?php if ($product['allow_personalization']): ?>
+        <form method="post" id="productForm">
+            <input type="hidden" name="product_id" value="<?php echo $product['id']; ?>">
+            <input type="hidden" name="personalization_data" id="personalizationInput">
+            <input type="hidden" name="is_personalized_intent" value="1">
 
-        <div class="product-info">
-          <div>
-            <?php if ($product['ribbon']): ?><span class="badge"><?php echo htmlspecialchars($product['ribbon']); ?></span><?php endif; ?>
-            <h1 style="margin: 8px 0;"><?php echo htmlspecialchars($product['title']); ?></h1>
-            <p class="lead" style="margin:0;"><?php echo htmlspecialchars($product['subtitle'] ?? ''); ?></p>
-            <div style="display:flex; gap:12px; align-items:baseline; margin-top:12px;">
-              <span class="big-price">€<?php echo number_format($product['discount_price'] ?: $product['price'], 2); ?></span>
-              <?php if ($product['discount_price']): ?>
-                <span class="big-old-price">€<?php echo number_format($product['price'], 2); ?></span>
+            <div class="editor-layout">
+                <div class="editor-thumbs">
+                    <?php foreach ($images as $idx => $img): ?>
+                        <div class="editor-thumb <?php echo $idx === 0 ? 'is-active' : ''; ?>" onclick="setEditorImage('<?php echo $img['image_url']; ?>', this)">
+                            <img src="<?php echo htmlspecialchars($img['image_url']); ?>" alt="">
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+
+                <div class="editor-stage">
+                    <div class="editor-canvas-wrap" id="canvasWrap">
+                        <img id="editorBg" src="<?php echo htmlspecialchars($images[0]['image_url']); ?>" class="editor-bg" alt="">
+                        <div class="editor-overlay" id="editorOverlay">
+                            <div id="textLayer" class="overlay-text" style="display:none; color: #000000; font-size: 24px; font-family: 'Roboto', sans-serif;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="editor-controls">
+                    <div>
+                        <h1 style="margin: 0; font-size: 24px;"><?php echo htmlspecialchars($product['title']); ?></h1>
+                        <p class="big-price">€<?php echo number_format($product['discount_price'] ?: $product['price'], 2); ?></p>
+                    </div>
+
+                    <div class="control-group">
+                        <p class="card__eyebrow">Tekstas</p>
+                        <input type="text" id="TextInput" placeholder="Jūsų tekstas..." class="form__field" style="width: 100%; padding: 10px;">
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <label class="form__field">
+                                <span>Šriftas</span>
+                                <select id="FontSelect">
+                                    <option value="'Roboto', sans-serif">Roboto</option>
+                                    <option value="'Playfair Display', serif">Playfair</option>
+                                    <option value="'Montserrat', sans-serif">Montserrat</option>
+                                    <option value="monospace">Monospace</option>
+                                </select>
+                            </label>
+                            <label class="form__field">
+                                <span>Dydis</span>
+                                <input type="number" id="SizeInput" value="24" min="10" max="100">
+                            </label>
+                        </div>
+
+                        <div>
+                            <span style="font-size: 13px; font-weight: 700; display:block; margin-bottom: 6px;">Spalva</span>
+                            <div class="color-options" id="ColorPicker">
+                                <button type="button" class="color-btn is-active" style="background: #000000;" data-color="#000000"></button>
+                                <button type="button" class="color-btn" style="background: #ffffff;" data-color="#ffffff"></button>
+                                <button type="button" class="color-btn" style="background: #ef4444;" data-color="#ef4444"></button>
+                                <button type="button" class="color-btn" style="background: #22c55e;" data-color="#22c55e"></button>
+                                <button type="button" class="color-btn" style="background: #3b82f6;" data-color="#3b82f6"></button>
+                                <button type="button" class="color-btn" style="background: #fbbf24;" data-color="#fbbf24"></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <?php if ($groupedVariations): ?>
+                        <div class="control-group">
+                            <?php foreach ($groupedVariations as $attrName => $values): ?>
+                                <div>
+                                    <p class="card__eyebrow" style="margin-bottom: 8px;"><?php echo htmlspecialchars($attrName); ?></p>
+                                    <div class="variation-select">
+                                        <?php foreach ($values as $val): ?>
+                                            <label>
+                                                <input type="radio" name="variation_id" value="<?php echo $val['id']; ?>" class="variation-radio">
+                                                <span class="variation-label"><?php echo htmlspecialchars($val['value']); ?></span>
+                                            </label>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <div style="display: flex; gap: 10px; margin-top: auto;">
+                        <input type="number" name="qty" value="1" min="1" max="20" style="width: 70px; text-align: center; border-radius: 12px; border: 1px solid var(--stroke);">
+                        <button type="submit" class="btn btn--primary btn--block">Į krepšelį</button>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <script>
+            // PERSONALIZAVIMO LOGIKA
+            const textInput = document.getElementById('TextInput');
+            const textLayer = document.getElementById('textLayer');
+            const fontSelect = document.getElementById('FontSelect');
+            const sizeInput = document.getElementById('SizeInput');
+            const colorPicker = document.getElementById('ColorPicker');
+            const persInput = document.getElementById('personalizationInput');
+
+            // Būsena
+            let state = {
+                text: '',
+                color: '#000000',
+                fontSize: 24,
+                fontFamily: "'Roboto', sans-serif"
+            };
+
+            function updateView() {
+                textLayer.innerText = state.text;
+                textLayer.style.display = state.text ? 'block' : 'none';
+                textLayer.style.color = state.color;
+                textLayer.style.fontSize = state.fontSize + 'px';
+                textLayer.style.fontFamily = state.fontFamily;
+                
+                if (state.text) {
+                    persInput.value = JSON.stringify(state);
+                } else {
+                    persInput.value = '';
+                }
+            }
+
+            textInput.addEventListener('input', (e) => { state.text = e.target.value; updateView(); });
+            fontSelect.addEventListener('change', (e) => { state.fontFamily = e.target.value; updateView(); });
+            sizeInput.addEventListener('input', (e) => { state.fontSize = e.target.value; updateView(); });
+
+            colorPicker.addEventListener('click', (e) => {
+                if(e.target.classList.contains('color-btn')) {
+                    document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('is-active'));
+                    e.target.classList.add('is-active');
+                    state.color = e.target.dataset.color;
+                    updateView();
+                }
+            });
+
+            window.setEditorImage = function(src, el) {
+                document.getElementById('editorBg').src = src;
+                document.querySelectorAll('.editor-thumb').forEach(t => t.classList.remove('is-active'));
+                el.classList.add('is-active');
+            }
+            
+            // Paprastas drag-and-drop
+            let isDragging = false;
+            let offset = { x: 0, y: 0 };
+
+            textLayer.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                textLayer.style.cursor = 'grabbing';
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const container = document.getElementById('canvasWrap').getBoundingClientRect();
+                
+                let x = e.clientX - container.left;
+                let y = e.clientY - container.top;
+                
+                let percentX = (x / container.width) * 100;
+                let percentY = (y / container.height) * 100;
+
+                textLayer.style.left = percentX + '%';
+                textLayer.style.top = percentY + '%';
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+                textLayer.style.cursor = 'move';
+            });
+        </script>
+
+      <?php else: ?>
+        <div class="product-layout">
+          <div class="gallery">
+            <div class="gallery__main">
+              <?php $mainSrc = !empty($images[0]['image_url']) ? $images[0]['image_url'] : ''; ?>
+              <?php if($mainSrc): ?>
+                  <img id="mainImage" src="<?php echo htmlspecialchars($mainSrc); ?>" alt="">
+              <?php else: ?>
+                  <div style="display:flex;align-items:center;justify-content:center;height:100%;">Nėra foto</div>
               <?php endif; ?>
             </div>
+            <?php if (count($images) > 1): ?>
+              <div class="gallery__thumbs">
+                <?php foreach ($images as $index => $img): ?>
+                  <button class="gallery__thumb <?php echo $index === 0 ? 'is-active' : ''; ?>" onclick="changeImage('<?php echo $img['image_url']; ?>', this)">
+                    <img src="<?php echo htmlspecialchars($img['image_url']); ?>" alt="">
+                  </button>
+                <?php endforeach; ?>
+              </div>
+            <?php endif; ?>
           </div>
 
-          <div class="add-to-cart-box">
-             <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div class="product-info">
+            <div>
+              <?php if ($product['ribbon']): ?><span class="badge"><?php echo htmlspecialchars($product['ribbon']); ?></span><?php endif; ?>
+              <h1 style="margin: 8px 0;"><?php echo htmlspecialchars($product['title']); ?></h1>
+              <p class="lead" style="margin:0;"><?php echo htmlspecialchars($product['subtitle'] ?? ''); ?></p>
+              <div style="display:flex; gap:12px; align-items:baseline; margin-top:12px;">
+                <span class="big-price">€<?php echo number_format($product['discount_price'] ?: $product['price'], 2); ?></span>
+                <?php if ($product['discount_price']): ?>
+                  <span class="big-old-price">€<?php echo number_format($product['price'], 2); ?></span>
+                <?php endif; ?>
+              </div>
+            </div>
+
+            <div class="add-to-cart-box">
+               <div style="display: flex; justify-content: space-between; align-items: center;">
                  <span class="strong">Likutis:</span>
                  <span class="<?php echo $product['stock'] > 0 ? 'text-success' : 'text-danger'; ?>">
                     <?php echo $product['stock'] > 0 ? $product['stock'] . ' vnt.' : 'Išparduota'; ?>
                  </span>
-             </div>
-             
-             <?php if ($product['stock'] > 0): ?>
+               </div>
+               
+               <?php if ($product['stock'] > 0): ?>
                  <form method="post" class="stack">
                     <input type="hidden" name="product_id" value="<?php echo $product['id']; ?>">
                     
@@ -221,17 +358,25 @@ unset($_SESSION['cart_alert']);
                         </div>
                     </div>
                  </form>
-             <?php else: ?>
+               <?php else: ?>
                  <button disabled class="btn btn--ghost btn--block">Laikinai nėra</button>
-             <?php endif; ?>
-          </div>
-          
-          <div class="product-description">
-            <h3>Apie produktą</h3>
-            <div><?php echo nl2br(htmlspecialchars($product['description'] ?: $product['summary'])); ?></div>
+               <?php endif; ?>
+            </div>
+            
+            <div class="product-description">
+              <h3>Apie produktą</h3>
+              <div><?php echo nl2br(htmlspecialchars($product['description'] ?: $product['summary'])); ?></div>
+            </div>
           </div>
         </div>
-      </div>
+        <script>
+            function changeImage(src, thumb) {
+                document.getElementById('mainImage').src = src;
+                document.querySelectorAll('.gallery__thumb').forEach(el => el.classList.remove('is-active'));
+                thumb.classList.add('is-active');
+            }
+        </script>
+      <?php endif; ?>
       
       <?php if ($relatedProducts): ?>
         <div style="margin-top: 80px;">
@@ -255,13 +400,6 @@ unset($_SESSION['cart_alert']);
       <?php endif; ?>
     </div>
   </main>
-  <script>
-    function changeImage(src, thumb) {
-        document.getElementById('mainImage').src = src;
-        document.querySelectorAll('.gallery__thumb').forEach(el => el.classList.remove('is-active'));
-        thumb.classList.add('is-active');
-    }
-  </script>
   <?php include __DIR__ . '/partials/footer.php'; ?>
 </body>
 </html>
