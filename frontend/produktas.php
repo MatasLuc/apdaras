@@ -10,7 +10,7 @@ if (!$id) {
     exit;
 }
 
-// -- Gauname duomenis (variacijas ir pan) prieš POST apdorojimą --
+// -- Gauname variacijas --
 $stmtVar = $pdo->prepare("
     SELECT va.name as attribute, vv.value, vv.id as val_id
     FROM product_variations pv
@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // VALIDACIJA: Jei prekė turi variacijų, bet niekas nepasirinkta
     if ($hasVariations && !$variationId) {
-        $errorMsg = "Prašome pasirinkti savybę (dydį ar spalvą).";
+        $errorMsg = "Būtina pasirinkti variaciją (dydį ar spalvą) prieš dedant į krepšelį.";
     } else {
         $added = add_cart_item($productId, $quantity, $variationId);
         
@@ -99,7 +99,7 @@ unset($_SESSION['cart_alert']);
   <title><?php echo htmlspecialchars($product['title']); ?> – apdaras.lt</title>
   <link rel="stylesheet" href="./assets/styles.css" />
   <style>
-    /* ... (Stiliai lieka tie patys kaip anksčiau) ... */
+    /* ... (Stiliai) ... */
     .product-layout { display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; align-items: start; }
     .gallery { display: grid; gap: 16px; }
     .gallery__main { width: 100%; aspect-ratio: 1/1.1; background: #f4f4f5; border-radius: 16px; overflow: hidden; border: 1px solid var(--stroke); }
@@ -112,9 +112,7 @@ unset($_SESSION['cart_alert']);
     .big-price { font-size: 32px; font-weight: 800; color: var(--accent-2); }
     .big-old-price { font-size: 20px; text-decoration: line-through; color: var(--muted); }
     .add-to-cart-box { background: var(--surface); border: 1px solid var(--stroke); border-radius: 16px; padding: 20px; display: grid; gap: 16px; }
-    .variation-select {
-        display: flex; flex-wrap: wrap; gap: 8px;
-    }
+    .variation-select { display: flex; flex-wrap: wrap; gap: 8px; }
     .variation-radio { display: none; }
     .variation-label {
         border: 1px solid var(--stroke);
@@ -145,8 +143,8 @@ unset($_SESSION['cart_alert']);
       <?php endif; ?>
       
       <?php if ($errorMsg): ?>
-        <div class="alert alert--error" style="margin-bottom: 24px;">
-          <?php echo htmlspecialchars($errorMsg); ?>
+        <div class="alert alert--error" style="margin-bottom: 24px; border-color: #ef4444; background: #fee2e2; color: #991b1b;">
+          <strong>Klaida:</strong> <?php echo htmlspecialchars($errorMsg); ?>
         </div>
       <?php endif; ?>
 
@@ -207,7 +205,7 @@ unset($_SESSION['cart_alert']);
                                 <div class="variation-select">
                                     <?php foreach ($values as $val): ?>
                                         <label>
-                                            <input type="radio" name="variation_id" value="<?php echo $val['id']; ?>" class="variation-radio" required>
+                                            <input type="radio" name="variation_id" value="<?php echo $val['id']; ?>" class="variation-radio">
                                             <span class="variation-label"><?php echo htmlspecialchars($val['value']); ?></span>
                                         </label>
                                     <?php endforeach; ?>
