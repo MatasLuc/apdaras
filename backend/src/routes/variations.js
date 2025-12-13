@@ -4,59 +4,79 @@ import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
+function handleError(res, err, fallbackMessage) {
+  // eslint-disable-next-line no-console
+  console.error(fallbackMessage, err.message);
+  return res.status(500).json({ message: fallbackMessage, detail: err.message });
+}
+
 router.get('/', async (_req, res) => {
-  const db = getPool();
-  const [rows] = await db.query(
-    `SELECT va.id AS attribute_id, va.name AS attribute_name,
-            vv.id AS value_id, vv.value
-     FROM variation_attributes va
-     LEFT JOIN variation_values vv ON vv.variation_attribute_id = va.id
-     ORDER BY va.name, vv.value`
-  );
+  try {
+    const db = getPool();
+    const [rows] = await db.query(
+      `SELECT va.id AS attribute_id, va.name AS attribute_name,
+              vv.id AS value_id, vv.value
+       FROM variation_attributes va
+       LEFT JOIN variation_values vv ON vv.variation_attribute_id = va.id
+       ORDER BY va.name, vv.value`
+    );
 
-  const attributes = [];
-  const grouped = new Map();
+    const attributes = [];
+    const grouped = new Map();
 
-  for (const row of rows) {
-    if (!grouped.has(row.attribute_id)) {
-      const entry = { id: row.attribute_id, name: row.attribute_name, values: [] };
-      grouped.set(row.attribute_id, entry);
-      attributes.push(entry);
+    for (const row of rows) {
+      if (!grouped.has(row.attribute_id)) {
+        const entry = { id: row.attribute_id, name: row.attribute_name, values: [] };
+        grouped.set(row.attribute_id, entry);
+        attributes.push(entry);
+      }
+      if (row.value_id) {
+        grouped.get(row.attribute_id).values.push({ id: row.value_id, value: row.value });
+      }
     }
-    if (row.value_id) {
-      grouped.get(row.attribute_id).values.push({ id: row.value_id, value: row.value });
-    }
+
+    return res.json(attributes);
+  } catch (err) {
+    return handleError(res, err, 'Nepavyko užkrauti variacijų');
   }
-
-  return res.json(attributes);
 });
 
 router.post('/attributes', requireAuth, async (req, res) => {
-  const db = getPool();
-  const { name } = req.body;
-  if (!name) {
-    return res.status(400).json({ message: 'Variation attribute name is required' });
-  }
+  try {
+    const db = getPool();
+    const { name } = req.body;
+    if (!name) {
+      return res.status(400).json({ message: 'Variation attribute name is required' });
+    }
 
-  const [result] = await db.execute('INSERT INTO variation_attributes (name) VALUES (?)', [name]);
-  return res.status(201).json({ id: result.insertId, name });
+    const [result] = await db.execute('INSERT INTO variation_attributes (name) VALUES (?)', [name]);
+    return res.status(201).json({ id: result.insertId, name });
+  } catch (err) {
+    return handleError(res, err, 'Nepavyko sukurti variacijos atributo');
+  }
 });
 
 router.post('/attributes/:attributeId/values', requireAuth, async (req, res) => {
-  const db = getPool();
-  const { value } = req.body;
-  const { attributeId } = req.params;
+  try {
+    const db = getPool();
+    const { value } = req.body;
+    const { attributeId } = req.params;
 
-  if (!value) {
-    return res.status(400).json({ message: 'Variation value is required' });
+    if (!value) {
+      return res.status(400).json({ message: 'Variation value is required' });
+    }
+
+    const [result] = await db.execute(
+      'INSERT INTO variation_values (variation_attribute_id, value) VALUES (?, ?)',
+      [attributeId, value]
+    );
+
+    return res
+      .status(201)
+      .json({ id: result.insertId, value, variation_attribute_id: Number(attributeId) });
+  } catch (err) {
+    return handleError(res, err, 'Nepavyko sukurti variacijos reikšmės');
   }
-
-  const [result] = await db.execute(
-    'INSERT INTO variation_values (variation_attribute_id, value) VALUES (?, ?)',
-    [attributeId, value]
-  );
-
-  return res.status(201).json({ id: result.insertId, value, variation_attribute_id: Number(attributeId) });
 });
 
 export default router;

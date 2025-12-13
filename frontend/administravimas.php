@@ -438,10 +438,19 @@ if (($user['role'] ?? 'customer') !== 'admin') {
     async function fetchJson(path, options = {}) {
       const headers = { 'X-Admin-Role': adminRole, ...(options.headers || {}) };
       const response = await fetch(`${apiBaseUrl}${path}`, { credentials: 'include', ...options, headers });
-      if (!response.ok) {
-        throw new Error(`Klaida ${response.status}`);
+      let payload;
+      const text = await response.text();
+      try {
+        payload = text ? JSON.parse(text) : null;
+      } catch (err) {
+        payload = null;
       }
-      return response.json();
+      if (!response.ok) {
+        const detail = payload?.detail ? `: ${payload.detail}` : '';
+        const message = payload?.message || `Klaida ${response.status}`;
+        throw new Error(`${message}${detail}`);
+      }
+      return payload;
     }
 
     function pushMessage(text, tone = 'info') {
@@ -704,7 +713,7 @@ if (($user['role'] ?? 'customer') !== 'admin') {
         renderRelated();
       } catch (error) {
         elements.productTable.insertAdjacentHTML('beforeend', `<div class="table__row"><span class="text-danger">${error.message}</span></div>`);
-        pushMessage('Nepavyko įkelti duomenų. Patikrinkite prisijungimą arba pabandykite dar kartą.', 'error');
+        pushMessage(`Nepavyko įkelti duomenų: ${error.message}`, 'error');
       }
     }
 
@@ -758,7 +767,7 @@ if (($user['role'] ?? 'customer') !== 'admin') {
         await loadCollections();
         pushMessage(isSubcategory ? 'Subkategorija pridėta' : 'Kategorija pridėta', 'success');
       } catch (error) {
-        pushMessage('Nepavyko išsaugoti kategorijos', 'error');
+        pushMessage(`Nepavyko išsaugoti kategorijos: ${error.message}`, 'error');
       }
     }
 
@@ -822,7 +831,7 @@ if (($user['role'] ?? 'customer') !== 'admin') {
             state.images.push({ image_url: response.url, is_primary: !state.images.length });
             renderImages();
           } catch (error) {
-            alert(`Nepavyko įkelti failo ${file.name}`);
+            alert(`Nepavyko įkelti failo ${file.name}: ${error.message}`);
           }
         };
         reader.readAsDataURL(file);
@@ -906,7 +915,7 @@ if (($user['role'] ?? 'customer') !== 'admin') {
         await loadCollections();
         pushMessage('Variacijos reikšmė pridėta', 'success');
       } catch (error) {
-        pushMessage('Nepavyko pridėti variacijos reikšmės', 'error');
+        pushMessage(`Nepavyko pridėti variacijos reikšmės: ${error.message}`, 'error');
       }
     });
 
@@ -997,7 +1006,7 @@ if (($user['role'] ?? 'customer') !== 'admin') {
         await loadCollections();
         pushMessage('Variacijos atributas pridėtas', 'success');
       } catch (error) {
-        pushMessage('Nepavyko pridėti variacijos atributo', 'error');
+        pushMessage(`Nepavyko pridėti variacijos atributo: ${error.message}`, 'error');
       }
     });
 
@@ -1023,7 +1032,7 @@ if (($user['role'] ?? 'customer') !== 'admin') {
         );
         await loadCollections();
       } catch (error) {
-        pushMessage('Nepavyko išsaugoti produkto', 'error');
+        pushMessage(`Nepavyko išsaugoti produkto: ${error.message}`, 'error');
       }
     });
 

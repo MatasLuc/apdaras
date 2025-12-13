@@ -4,6 +4,12 @@ import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
+function handleError(res, err, fallbackMessage) {
+  // eslint-disable-next-line no-console
+  console.error(fallbackMessage, err.message);
+  return res.status(500).json({ message: fallbackMessage, detail: err.message });
+}
+
 const baseSelect = `
   SELECT p.id, p.title, p.slug, p.subtitle, p.ribbon, p.summary, p.description,
          p.price, p.discount_price, p.stock, p.tags, p.weight_kg, p.allow_personalization,
@@ -105,49 +111,57 @@ async function insertImages(connection, productId, images = []) {
 }
 
 router.get('/', async (req, res) => {
-  const db = getPool();
-  const { category, subcategory, search } = req.query;
-  const filters = [];
-  const params = [];
-  if (category) {
-    filters.push(
-      'EXISTS (SELECT 1 FROM product_categories pc_filter WHERE pc_filter.product_id = p.id AND pc_filter.category_id = ?)'
+  try {
+    const db = getPool();
+    const { category, subcategory, search } = req.query;
+    const filters = [];
+    const params = [];
+    if (category) {
+      filters.push(
+        'EXISTS (SELECT 1 FROM product_categories pc_filter WHERE pc_filter.product_id = p.id AND pc_filter.category_id = ?)'
+      );
+      params.push(category);
+    }
+    if (subcategory) {
+      filters.push(
+        'EXISTS (SELECT 1 FROM product_subcategories psc_filter WHERE psc_filter.product_id = p.id AND psc_filter.subcategory_id = ?)'
+      );
+      params.push(subcategory);
+    }
+    if (search) {
+      filters.push('(p.title LIKE ? OR p.tags LIKE ?)');
+      params.push(`%${search}%`, `%${search}%`);
+    }
+    const where = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
+    const [rows] = await db.query(
+      `${baseSelect}
+       ${where}
+       GROUP BY p.id
+       ORDER BY p.created_at DESC`,
+      params
     );
-    params.push(category);
+    return res.json(rows.map(normalizeProduct));
+  } catch (err) {
+    return handleError(res, err, 'Nepavyko užkrauti prekių sąrašo');
   }
-  if (subcategory) {
-    filters.push(
-      'EXISTS (SELECT 1 FROM product_subcategories psc_filter WHERE psc_filter.product_id = p.id AND psc_filter.subcategory_id = ?)'
-    );
-    params.push(subcategory);
-  }
-  if (search) {
-    filters.push('(p.title LIKE ? OR p.tags LIKE ?)');
-    params.push(`%${search}%`, `%${search}%`);
-  }
-  const where = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
-  const [rows] = await db.query(
-    `${baseSelect}
-     ${where}
-     GROUP BY p.id
-     ORDER BY p.created_at DESC`,
-    params
-  );
-  return res.json(rows.map(normalizeProduct));
 });
 
 router.get('/:id', async (req, res) => {
-  const db = getPool();
-  const [rows] = await db.query(
-    `${baseSelect}
-     WHERE p.id = ?
-     GROUP BY p.id`,
-    [req.params.id]
-  );
-  if (!rows.length) {
-    return res.status(404).json({ message: 'Product not found' });
+  try {
+    const db = getPool();
+    const [rows] = await db.query(
+      `${baseSelect}
+       WHERE p.id = ?
+       GROUP BY p.id`,
+      [req.params.id]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    return res.json(normalizeProduct(rows[0]));
+  } catch (err) {
+    return handleError(res, err, 'Nepavyko užkrauti prekės');
   }
-  return res.json(normalizeProduct(rows[0]));
 });
 
 router.post('/', requireAuth, async (req, res) => {
@@ -338,40 +352,52 @@ router.put('/:id', requireAuth, async (req, res) => {
 });
 
 router.delete('/:id', requireAuth, async (req, res) => {
-  const db = getPool();
-  const [result] = await db.execute('DELETE FROM products WHERE id = ?', [req.params.id]);
-  if (!result.affectedRows) {
-    return res.status(404).json({ message: 'Product not found' });
+  try {
+    const db = getPool();
+    const [result] = await db.execute('DELETE FROM products WHERE id = ?', [req.params.id]);
+    if (!result.affectedRows) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    return res.json({ success: true });
+  } catch (err) {
+    return handleError(res, err, 'Nepavyko ištrinti prekės');
   }
-  return res.json({ success: true });
 });
 
 router.post('/:id/images', requireAuth, async (req, res) => {
-  const db = getPool();
-  const { image_url, is_primary } = req.body;
-  if (!image_url) {
-    return res.status(400).json({ message: 'Image URL is required' });
+  try {
+    const db = getPool();
+    const { image_url, is_primary } = req.body;
+    if (!image_url) {
+      return res.status(400).json({ message: 'Image URL is required' });
+    }
+    if (is_primary) {
+      await db.execute('UPDATE product_images SET is_primary = 0 WHERE product_id = ?', [req.params.id]);
+    }
+    const [result] = await db.execute(
+      'INSERT INTO product_images (product_id, image_url, is_primary) VALUES (?, ?, ?)',
+      [req.params.id, image_url, is_primary ? 1 : 0]
+    );
+    return res.status(201).json({ id: result.insertId });
+  } catch (err) {
+    return handleError(res, err, 'Nepavyko pridėti nuotraukos');
   }
-  if (is_primary) {
-    await db.execute('UPDATE product_images SET is_primary = 0 WHERE product_id = ?', [req.params.id]);
-  }
-  const [result] = await db.execute(
-    'INSERT INTO product_images (product_id, image_url, is_primary) VALUES (?, ?, ?)',
-    [req.params.id, image_url, is_primary ? 1 : 0]
-  );
-  return res.status(201).json({ id: result.insertId });
 });
 
 router.delete('/:id/images/:imageId', requireAuth, async (req, res) => {
-  const db = getPool();
-  const [result] = await db.execute('DELETE FROM product_images WHERE product_id = ? AND id = ?', [
-    req.params.id,
-    req.params.imageId
-  ]);
-  if (!result.affectedRows) {
-    return res.status(404).json({ message: 'Image not found' });
+  try {
+    const db = getPool();
+    const [result] = await db.execute('DELETE FROM product_images WHERE product_id = ? AND id = ?', [
+      req.params.id,
+      req.params.imageId
+    ]);
+    if (!result.affectedRows) {
+      return res.status(404).json({ message: 'Image not found' });
+    }
+    return res.json({ success: true });
+  } catch (err) {
+    return handleError(res, err, 'Nepavyko ištrinti nuotraukos');
   }
-  return res.json({ success: true });
 });
 
 export default router;
