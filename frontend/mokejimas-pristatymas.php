@@ -24,7 +24,7 @@
 
   <main class="section">
     <div class="container">
-      <div class="section__inner grid grid--two align-start">
+      <div class="section__inner stack stack--spacious">
         <div class="card card--panel">
           <h2>Mokėjimo būdai</h2>
           <ul class="list">

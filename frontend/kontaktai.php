@@ -24,7 +24,7 @@
 
   <main class="section">
     <div class="container">
-      <div class="section__inner grid grid--two align-start">
+      <div class="section__inner stack stack--spacious">
         <div class="card card--panel">
           <h2>Kontaktinė informacija</h2>
           <p class="muted">Pasirinkite patogiausią būdą susisiekti su mumis dėl užsakymų, grąžinimų ar bendradarbiavimo.</p>

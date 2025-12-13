@@ -29,7 +29,7 @@
           <p class="badge">Procesas</p>
           <h2>Kaip atlikti grąžinimą</h2>
         </div>
-        <div class="grid grid--two align-start">
+        <div class="stack stack--spacious">
           <div class="card card--panel">
             <h3>Žingsniai</h3>
             <ol class="list">

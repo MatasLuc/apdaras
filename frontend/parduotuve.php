@@ -121,7 +121,7 @@ unset($_SESSION['cart_alert']);
             <p class="badge">Paslaugos</p>
             <h2>Pristatymas ir grąžinimai</h2>
           </div>
-          <div class="grid grid--two">
+          <div class="stack stack--spacious">
             <article class="tile">
               <p class="tile__label">Pristatymas</p>
               <h3>Greita logistika</h3>

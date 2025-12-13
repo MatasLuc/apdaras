@@ -172,7 +172,7 @@ if (($user['role'] ?? 'customer') !== 'admin') {
                       <button class="btn" type="button" id="add-variation-value">Pridėti reikšmę</button>
                     </div>
                   </div>
-                  <div id="variation-library" class="grid grid--two"></div>
+                  <div id="variation-library" class="stack stack--spacious"></div>
                 </div>
               </div>
 
@@ -324,7 +324,7 @@ if (($user['role'] ?? 'customer') !== 'admin') {
                       </div>
                     </div>
                     <div class="form-section__body">
-                      <div id="variation-picker" class="grid grid--two"></div>
+                  <div id="variation-picker" class="stack stack--spacious"></div>
                     </div>
                   </div>
 
@@ -339,7 +339,7 @@ if (($user['role'] ?? 'customer') !== 'admin') {
                       </div>
                     </div>
                     <div class="form-section__body">
-                      <div class="grid grid--two">
+                      <div class="stack stack--spacious">
                         <div>
                           <p class="muted">Rezultatai</p>
                           <div id="related-results" class="list"></div>
@@ -379,6 +379,7 @@ if (($user['role'] ?? 'customer') !== 'admin') {
     const apiBaseUrl = "<?php echo getenv('API_BASE_URL') ?: 'http://localhost:4000'; ?>";
     const params = new URLSearchParams(window.location.search);
     const editingProductId = params.get('productId');
+    const adminRole = "<?php echo htmlspecialchars($user['role'] ?? '', ENT_QUOTES, 'UTF-8'); ?>";
 
     const state = {
       products: [],
@@ -433,7 +434,8 @@ if (($user['role'] ?? 'customer') !== 'admin') {
     }
 
     async function fetchJson(path, options = {}) {
-      const response = await fetch(`${apiBaseUrl}${path}`, { credentials: 'include', ...options });
+      const headers = { 'X-Admin-Role': adminRole, ...(options.headers || {}) };
+      const response = await fetch(`${apiBaseUrl}${path}`, { credentials: 'include', ...options, headers });
       if (!response.ok) {
         throw new Error(`Klaida ${response.status}`);
       }
