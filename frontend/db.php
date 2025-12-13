@@ -106,14 +106,23 @@ function ensure_users_table(PDO $pdo): void
             password_hash VARCHAR(255) NOT NULL,
             name VARCHAR(150) NOT NULL,
             role ENUM('customer', 'admin') DEFAULT 'customer',
+            profile_image VARCHAR(255) DEFAULT NULL,
+            birthdate DATE DEFAULT NULL,
+            address TEXT DEFAULT NULL,
+            gender ENUM('male', 'female', 'unspecified') DEFAULT 'unspecified',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
     );
+
+    $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image VARCHAR(255) DEFAULT NULL AFTER role");
+    $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS birthdate DATE DEFAULT NULL AFTER profile_image");
+    $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT DEFAULT NULL AFTER birthdate");
+    $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS gender ENUM('male', 'female', 'unspecified') DEFAULT 'unspecified' AFTER address");
 }
 
 function find_user_by_email(PDO $pdo, string $email): ?array
 {
-    $stmt = $pdo->prepare('SELECT id, email, password_hash, name, role FROM users WHERE email = ? LIMIT 1');
+    $stmt = $pdo->prepare('SELECT id, email, password_hash, name, role, profile_image, birthdate, address, gender FROM users WHERE email = ? LIMIT 1');
     $stmt->execute([$email]);
     $user = $stmt->fetch();
 
@@ -122,7 +131,7 @@ function find_user_by_email(PDO $pdo, string $email): ?array
 
 function find_user_by_id(PDO $pdo, int $id): ?array
 {
-    $stmt = $pdo->prepare('SELECT id, email, password_hash, name, role FROM users WHERE id = ? LIMIT 1');
+    $stmt = $pdo->prepare('SELECT id, email, password_hash, name, role, profile_image, birthdate, address, gender FROM users WHERE id = ? LIMIT 1');
     $stmt->execute([$id]);
     $user = $stmt->fetch();
 
@@ -147,10 +156,20 @@ function password_cost(): int
     return max(4, min($cost, 31));
 }
 
-function update_user_profile(PDO $pdo, int $id, string $name, string $email): void
-{
-    $stmt = $pdo->prepare('UPDATE users SET name = ?, email = ? WHERE id = ?');
-    $stmt->execute([$name, $email, $id]);
+function update_user_profile(
+    PDO $pdo,
+    int $id,
+    string $name,
+    string $email,
+    ?string $birthdate,
+    ?string $address,
+    string $gender,
+    ?string $profileImage
+): void {
+    $stmt = $pdo->prepare(
+        'UPDATE users SET name = ?, email = ?, birthdate = ?, address = ?, gender = ?, profile_image = COALESCE(?, profile_image) WHERE id = ?'
+    );
+    $stmt->execute([$name, $email, $birthdate, $address, $gender, $profileImage, $id]);
 }
 
 function update_user_password(PDO $pdo, int $id, string $password): void

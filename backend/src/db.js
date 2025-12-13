@@ -9,6 +9,10 @@ const TABLE_QUERIES = [
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     name VARCHAR(150) NOT NULL,
+    profile_image VARCHAR(255) DEFAULT NULL,
+    birthdate DATE DEFAULT NULL,
+    address TEXT DEFAULT NULL,
+    gender ENUM('male', 'female', 'unspecified') DEFAULT 'unspecified',
     role ENUM('customer', 'admin') DEFAULT 'customer',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   )`,
@@ -123,6 +127,10 @@ const MIGRATIONS = [
   `ALTER TABLE products ADD COLUMN IF NOT EXISTS discount_price DECIMAL(10,2) DEFAULT NULL AFTER price`,
   `ALTER TABLE products ADD COLUMN IF NOT EXISTS weight_kg DECIMAL(8,3) DEFAULT NULL AFTER tags`,
   `ALTER TABLE products ADD COLUMN IF NOT EXISTS allow_personalization TINYINT(1) DEFAULT 0 AFTER weight_kg`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image VARCHAR(255) DEFAULT NULL AFTER role`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS birthdate DATE DEFAULT NULL AFTER profile_image`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT DEFAULT NULL AFTER birthdate`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS gender ENUM('male', 'female', 'unspecified') DEFAULT 'unspecified' AFTER address`,
   `INSERT IGNORE INTO product_categories (product_id, category_id)
    SELECT id, category_id FROM products WHERE category_id IS NOT NULL`,
   `INSERT IGNORE INTO product_subcategories (product_id, subcategory_id)

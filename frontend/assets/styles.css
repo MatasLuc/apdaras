@@ -355,6 +355,10 @@ a { color: inherit; text-decoration: none; }
   align-items: start;
 }
 
+.auth-shell--full {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .auth-card {
   background: #ffffff;
   border: 1px solid var(--stroke);
@@ -363,6 +367,11 @@ a { color: inherit; text-decoration: none; }
   box-shadow: var(--shadow-soft);
   display: grid;
   gap: 14px;
+}
+
+.auth-card--profile {
+  max-width: 900px;
+  margin: 0 auto;
 }
 
 .form { display: grid; gap: 12px; }
@@ -385,7 +394,9 @@ a { color: inherit; text-decoration: none; }
 
 .form__field { display: grid; gap: 8px; font-weight: 800; }
 
-.form__field input {
+.form__field input,
+.form__field textarea,
+.form__field select {
   padding: 12px 13px;
   border-radius: 12px;
   border: 1px solid var(--stroke);
@@ -396,14 +407,62 @@ a { color: inherit; text-decoration: none; }
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
-.form__field input:focus {
+.form__field input:focus,
+.form__field textarea:focus,
+.form__field select:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.24);
   background: #f4fbf6;
 }
 
+.form__field textarea {
+  resize: vertical;
+  min-height: 110px;
+}
+
 .form__row { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+
+.profile-row { align-items: stretch; }
+
+.upload-tile {
+  display: block;
+  border: 1px dashed rgba(var(--accent-rgb), 0.4);
+  border-radius: 14px;
+  background: rgba(var(--accent-rgb), 0.06);
+  padding: 14px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.upload-tile input {
+  display: none;
+}
+
+.upload-tile__content {
+  display: grid;
+  gap: 4px;
+}
+
+.upload-tile:hover {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+.avatar-preview {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+
+.avatar-preview img {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 16px;
+  border: 1px solid var(--stroke);
+  box-shadow: var(--shadow-soft);
+}
 
 .form__actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 
