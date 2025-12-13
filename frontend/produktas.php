@@ -258,7 +258,7 @@ unset($_SESSION['cart_alert']);
                 el.classList.add('is-active');
             }
 
-            // GIZMO LOGIKA (Drag, Rotate, Resize)
+            // GIZMO LOGIKA
             let isDragging = false, isRotating = false, isResizing = false;
             let startAngle = 0, startScale = 1;
 
@@ -345,32 +345,44 @@ unset($_SESSION['cart_alert']);
                     const { jsPDF } = window.jspdf;
 
                     // 1. Sugeneruojame SPAUDOS FAILĄ (be fono, tik tekstas, aukšta kokybė)
-                    editorBg.style.visibility = 'hidden'; // Paslepiam foną
+                    editorBg.style.visibility = 'hidden'; 
+                    
+                    // TAISYMAS: Pridėti scroll nustatymai, kad išvengti nukirpimo
                     const printCanvas = await html2canvas(canvasWrap, {
                         useCORS: true,
-                        scale: 4, // 4x kokybė spaudai
-                        backgroundColor: null // Skaidrus fonas
+                        scale: 4, 
+                        backgroundColor: null,
+                        scrollX: 0,
+                        scrollY: 0
                     });
                     
-                    // Kuriame PDF
-                    const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [printCanvas.width, printCanvas.height] });
-                    pdf.addImage(printCanvas.toDataURL('image/png'), 'PNG', 0, 0, printCanvas.width, printCanvas.height);
+                    // Konvertuojame pikselius į taškus (points) PDF'ui: 1px = 0.75pt
+                    const widthPt = printCanvas.width * 0.75;
+                    const heightPt = printCanvas.height * 0.75;
+
+                    const pdf = new jsPDF({ 
+                        orientation: printCanvas.width > printCanvas.height ? 'l' : 'p', 
+                        unit: 'pt', 
+                        format: [widthPt, heightPt] 
+                    });
+                    
+                    pdf.addImage(printCanvas.toDataURL('image/png'), 'PNG', 0, 0, widthPt, heightPt);
                     const pdfData = pdf.output('datauristring');
                     
-                    // Įkeliame PDF
                     const pdfUrl = await uploadDataUrl('print-file.pdf', pdfData);
                     state.printPdfUrl = pdfUrl;
 
                     // 2. Sugeneruojame PERŽIŪROS FAILĄ (su fonu)
-                    editorBg.style.visibility = 'visible'; // Grąžinam foną
+                    editorBg.style.visibility = 'visible'; 
                     const previewCanvas = await html2canvas(canvasWrap, {
                         useCORS: true,
-                        scale: 1 // Standartinė kokybė ekranui
+                        scale: 1,
+                        scrollX: 0,
+                        scrollY: 0
                     });
                     const previewUrl = await uploadDataUrl('preview-snapshot.png', previewCanvas.toDataURL('image/png'));
                     state.snapshotUrl = previewUrl;
 
-                    // 3. Išsaugome ir siunčiame
                     persInput.value = JSON.stringify(state);
                     form.submit();
 
