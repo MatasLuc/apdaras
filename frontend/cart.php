@@ -35,15 +35,16 @@ function cart_catalog(): array
 
     $pdo = get_db_connection();
 
-    $stmt = $pdo->query(
-        "SELECT p.id, p.title, p.price, p.discount_price, p.stock, p.ribbon, p.tags, p.summary, p.subtitle,\n" .
-        "       GROUP_CONCAT(DISTINCT CONCAT(c.id, ':', c.name) ORDER BY c.name SEPARATOR '|') AS categories\n" .
-        "FROM products p\n" .
-        "LEFT JOIN product_categories pc ON pc.product_id = p.id\n" .
-        "LEFT JOIN categories c ON pc.category_id = c.id\n" .
-        "GROUP BY p.id\n" .
-        "ORDER BY p.created_at DESC"
-    );
+    $sql = "SELECT p.id, p.title, p.price, p.discount_price, p.stock, p.ribbon, p.tags, p.summary, p.subtitle,
+                   (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC LIMIT 1) as image_url,
+                   GROUP_CONCAT(DISTINCT CONCAT(c.id, ':', c.name) ORDER BY c.name SEPARATOR '|') AS categories
+            FROM products p
+            LEFT JOIN product_categories pc ON pc.product_id = p.id
+            LEFT JOIN categories c ON pc.category_id = c.id
+            GROUP BY p.id
+            ORDER BY p.created_at DESC";
+
+    $stmt = $pdo->query($sql);
 
     $products = $stmt ? $stmt->fetchAll() : [];
     $catalog = [];
@@ -67,6 +68,7 @@ function cart_catalog(): array
         $catalog[] = [
             'id' => (string) $product['id'],
             'name' => (string) $product['title'],
+            'image_url' => $product['image_url'] ?? null,
             'price' => $finalPrice,
             'full_price' => (float) $product['price'],
             'discount_price' => $discount !== null && $discount !== '' ? (float) $discount : null,
