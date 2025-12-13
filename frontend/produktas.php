@@ -77,13 +77,14 @@ foreach ($variations as $v) {
 }
 
 // 5. Gauname kelias susijusias prekes (atsitiktines, išskyrus dabartinę)
+// PAKEITIMAS: LIMIT 3 -> LIMIT 4
 $stmtRelated = $pdo->prepare("
     SELECT p.id, p.title, p.price, p.discount_price,
            (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC LIMIT 1) as image_url
     FROM products p
     WHERE p.id != ? AND p.stock > 0
     ORDER BY RAND()
-    LIMIT 3
+    LIMIT 4
 ");
 $stmtRelated->execute([$id]);
 $relatedProducts = $stmtRelated->fetchAll();
@@ -358,7 +359,7 @@ unset($_SESSION['cart_alert']);
             <p class="badge">Taip pat siūlome</p>
             <h2>Jums gali patikti</h2>
         </div>
-        <div class="grid grid--three" style="margin-top: 24px;">
+        <div class="grid grid--four" style="margin-top: 24px;">
             <?php foreach ($relatedProducts as $rel): ?>
                 <a href="produktas.php?id=<?php echo $rel['id']; ?>" class="card card--product" style="text-decoration: none; color: inherit;">
                     <div class="card__image-container">
