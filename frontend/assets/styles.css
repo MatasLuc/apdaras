@@ -10,7 +10,7 @@
   --danger: #ef4444;
   --text: #0f172a;
   --muted: #50607a;
-  --stroke: rgba(15, 17, 42, 0.08);
+  --stroke: rgba(15, 23, 42, 0.08);
   --shadow-soft: 0 16px 40px rgba(15, 23, 42, 0.08);
   --shadow-strong: 0 30px 90px rgba(15, 23, 42, 0.12);
   --radius: 16px;
@@ -898,7 +898,7 @@ a { color: inherit; text-decoration: none; }
     border-color: var(--text);
 }
 
-/* --- PERSONALIZAVIMO REDAKTORIUS (V1) --- */
+/* --- PERSONALIZAVIMO REDAKTORIUS (V2 - SU RĖMELIU IR RANKENĖLĖMIS) --- */
 .editor-layout {
   display: grid;
   grid-template-columns: 80px 1fr 340px;
@@ -954,23 +954,42 @@ a { color: inherit; text-decoration: none; }
   overflow: hidden;
 }
 
-/* Teksto elementas */
-.overlay-text {
+/* Transformuojamas rėmelis (tekstui) */
+.transform-box {
   position: absolute;
   top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
+  transform-origin: center center;
   pointer-events: auto;
   cursor: move;
   border: 1px dashed transparent;
-  padding: 4px;
-  line-height: 1.2;
-  white-space: nowrap;
   user-select: none;
 }
-.overlay-text:hover, .overlay-text.is-selected {
+.transform-box.is-selected {
   border-color: var(--accent);
-  background: rgba(255,255,255,0.3);
+  background: rgba(255,255,255,0.2);
 }
+
+.transform-box p {
+  margin: 0;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* Rankenėlės */
+.resize-handle, .rotate-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  display: none;
+}
+.transform-box.is-selected .resize-handle,
+.transform-box.is-selected .rotate-handle { display: block; }
+
+.resize-handle { bottom: -6px; right: -6px; cursor: nwse-resize; }
+.rotate-handle { top: -20px; left: 50%; margin-left: -6px; cursor: grab; background: var(--accent); }
 
 /* Dešinė pusė: Įrankiai */
 .editor-controls {
@@ -1002,6 +1021,27 @@ a { color: inherit; text-decoration: none; }
   padding: 0;
 }
 .color-btn.is-active { border-color: var(--text); transform: scale(1.1); }
+
+/* Individualių užsakymų vaizdas admin dalyje */
+.custom-order-preview {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-top: 8px;
+  background: #f9f9f9;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #eee;
+}
+.custom-order-thumb {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: #fff;
+  border: 1px solid #ddd;
+}
+.custom-details p { margin: 2px 0; font-size: 13px; color: #555; }
 
 @media (max-width: 1000px) {
   .editor-layout {
