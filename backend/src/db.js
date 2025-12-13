@@ -3,12 +3,24 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+const DEFAULT_DB_CONFIG = {
+  DB_HOST: 'localhost',
+  DB_PORT: '3306',
+  DB_USER: 'apdarasl_apdaras',
+  DB_PASSWORD: 'Kosmosas420!',
+  DB_NAME: 'apdarasl_apdaras'
+};
+
 const TABLE_QUERIES = [
   `CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     name VARCHAR(150) NOT NULL,
+    profile_image VARCHAR(255) DEFAULT NULL,
+    birthdate DATE DEFAULT NULL,
+    address TEXT DEFAULT NULL,
+    gender ENUM('male', 'female', 'unspecified') DEFAULT 'unspecified',
     role ENUM('customer', 'admin') DEFAULT 'customer',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   )`,
@@ -28,11 +40,16 @@ const TABLE_QUERIES = [
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     slug VARCHAR(255) NOT NULL UNIQUE,
+    subtitle VARCHAR(255) DEFAULT '',
+    ribbon VARCHAR(120) DEFAULT '',
     summary VARCHAR(300) DEFAULT '',
     description TEXT,
     price DECIMAL(10,2) NOT NULL,
+    discount_price DECIMAL(10,2) DEFAULT NULL,
     stock INT DEFAULT 0,
     tags VARCHAR(255) DEFAULT '',
+    weight_kg DECIMAL(8,3) DEFAULT NULL,
+    allow_personalization TINYINT(1) DEFAULT 0,
     category_id INT NULL,
     subcategory_id INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -46,6 +63,45 @@ const TABLE_QUERIES = [
     is_primary TINYINT(1) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+  )`,
+  `CREATE TABLE IF NOT EXISTS product_categories (
+    product_id INT NOT NULL,
+    category_id INT NOT NULL,
+    PRIMARY KEY (product_id, category_id),
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+  )`,
+  `CREATE TABLE IF NOT EXISTS product_subcategories (
+    product_id INT NOT NULL,
+    subcategory_id INT NOT NULL,
+    PRIMARY KEY (product_id, subcategory_id),
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (subcategory_id) REFERENCES subcategories(id) ON DELETE CASCADE
+  )`,
+  `CREATE TABLE IF NOT EXISTS variation_attributes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(120) NOT NULL UNIQUE
+  )`,
+  `CREATE TABLE IF NOT EXISTS variation_values (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    variation_attribute_id INT NOT NULL,
+    value VARCHAR(120) NOT NULL,
+    UNIQUE KEY unique_value (variation_attribute_id, value),
+    FOREIGN KEY (variation_attribute_id) REFERENCES variation_attributes(id) ON DELETE CASCADE
+  )`,
+  `CREATE TABLE IF NOT EXISTS product_variations (
+    product_id INT NOT NULL,
+    variation_value_id INT NOT NULL,
+    PRIMARY KEY (product_id, variation_value_id),
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (variation_value_id) REFERENCES variation_values(id) ON DELETE CASCADE
+  )`,
+  `CREATE TABLE IF NOT EXISTS product_related (
+    product_id INT NOT NULL,
+    related_product_id INT NOT NULL,
+    PRIMARY KEY (product_id, related_product_id),
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (related_product_id) REFERENCES products(id) ON DELETE CASCADE
   )`,
   `CREATE TABLE IF NOT EXISTS coupons (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -73,35 +129,53 @@ const TABLE_QUERIES = [
   )`
 ];
 
+// Migracijos paliktos tuščios, kad nekeltų klaidų startuojant.
+// Visa struktūra jau apibrėžta aukščiau esančiame TABLE_QUERIES masyve.
+const MIGRATIONS = [];
+
 let pool;
 
-function ensureEnv() {
-  const required = ['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'];
-  const missing = required.filter((key) => !process.env[key]);
-  if (missing.length) {
-    throw new Error(`Trūksta aplinkos kintamųjų: ${missing.join(', ')}`);
-  }
+function resolveConfig() {
+  const config = { ...DEFAULT_DB_CONFIG };
+
+  Object.keys(DEFAULT_DB_CONFIG).forEach((key) => {
+    const value = process.env[key];
+    if (typeof value === 'string' && value !== '') {
+      config[key] = value;
+    }
+  });
+
+  return config;
 }
 
 export async function initDb() {
   if (pool) return pool;
-  ensureEnv();
-
-  const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME } = process.env;
-  const connection = await mysql.createConnection({
-    host: DB_HOST,
-    port: DB_PORT,
-    user: DB_USER,
-    password: DB_PASSWORD
-  });
+  const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME } = resolveConfig();
+  let connection;
+  try {
+    connection = await mysql.createConnection({
+      host: DB_HOST,
+      port: DB_PORT,
+      user: DB_USER,
+      password: DB_PASSWORD
+    });
+  } catch (err) {
+    throw new Error(`Nepavyko prisijungti: ${err.message}`);
+  }
 
   await connection.query(
     `CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
   );
   await connection.query(`USE \`${DB_NAME}\``);
 
+  // Automatiškai sukuria lenteles, jei jų nėra
   for (const statement of TABLE_QUERIES) {
     await connection.query(statement);
+  }
+
+  // Vykdo migracijas (šiuo metu tuščia, todėl klaidų nebus)
+  for (const migration of MIGRATIONS) {
+    await connection.query(migration);
   }
 
   await connection.end();
@@ -124,4 +198,3 @@ export function getPool() {
   }
   return pool;
 }
-

@@ -110,7 +110,7 @@
             <p class="badge">Architektūra</p>
             <h2>Kas jau veikia ir kuo dar papildysime</h2>
           </div>
-          <div class="grid grid--two align-center">
+          <div class="stack stack--spacious">
             <div class="tile">
               <p class="tile__label">Front-end</p>
               <h3>Glotnus vartotojo kelias</h3>

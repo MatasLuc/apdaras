@@ -28,7 +28,7 @@ function current_user(PDO $pdo): ?array
         return null;
     }
 
-    $stmt = $pdo->prepare('SELECT id, name, email, role FROM users WHERE id = ? LIMIT 1');
+    $stmt = $pdo->prepare('SELECT id, name, email, role, profile_image, birthdate, address, gender FROM users WHERE id = ? LIMIT 1');
     $stmt->execute([$userId]);
     $user = $stmt->fetch();
 

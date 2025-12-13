@@ -72,29 +72,44 @@ unset($_SESSION['cart_alert']);
             </div>
           <?php endif; ?>
 
-          <div class="grid grid--three">
-            <?php foreach ($catalog as $product): ?>
-              <article class="card card--product">
-                <div class="card__header">
-                  <span class="pill"><?php echo htmlspecialchars($product['category'], ENT_QUOTES, 'UTF-8'); ?></span>
-                  <span class="pill pill--ghost"><?php echo htmlspecialchars($product['tag'], ENT_QUOTES, 'UTF-8'); ?></span>
-                </div>
-                <h3><?php echo htmlspecialchars($product['name'], ENT_QUOTES, 'UTF-8'); ?></h3>
-                <p class="muted">Lengvai derinami siluetai, pagaminti iš kokybiškos medvilnės ir paruošti greitam pristatymui.</p>
-                <div class="card__meta">
-                  <span class="card__price">€<?php echo number_format($product['price'], 2, '.', ''); ?></span>
-                  <form method="post" class="product-form">
-                    <input type="hidden" name="product_id" value="<?php echo htmlspecialchars($product['id'], ENT_QUOTES, 'UTF-8'); ?>">
-                    <label class="quantity">
-                      <span class="sr-only">Kiekis</span>
-                      <input type="number" name="qty" min="1" max="20" value="1">
-                    </label>
-                    <button class="btn btn--primary" type="submit">Į krepšelį</button>
-                  </form>
-                </div>
-              </article>
-            <?php endforeach; ?>
-          </div>
+          <?php if (empty($catalog)): ?>
+            <div class="empty-state">
+              <p class="badge">Katalogas tuščias</p>
+              <h3>Dar neįkelta prekių</h3>
+              <p class="muted">Pabandykite pridėti produktų administravimo skydelyje arba atnaujinkite puslapį.</p>
+            </div>
+          <?php else: ?>
+            <div class="grid grid--three">
+              <?php foreach ($catalog as $product): ?>
+                <article class="card card--product">
+                  <div class="card__header">
+                    <span class="pill"><?php echo htmlspecialchars($product['category'], ENT_QUOTES, 'UTF-8'); ?></span>
+                    <span class="pill pill--ghost"><?php echo htmlspecialchars($product['tag'], ENT_QUOTES, 'UTF-8'); ?></span>
+                  </div>
+                  <h3><?php echo htmlspecialchars($product['name'], ENT_QUOTES, 'UTF-8'); ?></h3>
+                  <p class="muted">
+                    <?php echo htmlspecialchars($product['summary'] ?: 'Atraskite naujausias kolekcijas ir variacijas.', ENT_QUOTES, 'UTF-8'); ?>
+                  </p>
+                  <div class="card__meta">
+                    <div class="price-stack">
+                      <span class="card__price">€<?php echo number_format($product['price'], 2, '.', ''); ?></span>
+                      <?php if (!empty($product['discount_price'])): ?>
+                        <span class="card__old-price">€<?php echo number_format($product['full_price'], 2, '.', ''); ?></span>
+                      <?php endif; ?>
+                    </div>
+                    <form method="post" class="product-form">
+                      <input type="hidden" name="product_id" value="<?php echo htmlspecialchars($product['id'], ENT_QUOTES, 'UTF-8'); ?>">
+                      <label class="quantity">
+                        <span class="sr-only">Kiekis</span>
+                        <input type="number" name="qty" min="1" max="20" value="1">
+                      </label>
+                      <button class="btn btn--primary" type="submit">Į krepšelį</button>
+                    </form>
+                  </div>
+                </article>
+              <?php endforeach; ?>
+            </div>
+          <?php endif; ?>
         </div>
       </div>
     </section>
@@ -106,7 +121,7 @@ unset($_SESSION['cart_alert']);
             <p class="badge">Paslaugos</p>
             <h2>Pristatymas ir grąžinimai</h2>
           </div>
-          <div class="grid grid--two">
+          <div class="stack stack--spacious">
             <article class="tile">
               <p class="tile__label">Pristatymas</p>
               <h3>Greita logistika</h3>
